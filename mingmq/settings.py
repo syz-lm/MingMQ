@@ -8,4 +8,11 @@ PORT = 8080
 USER_NAME = 'admin'
 PASSWD = '123456'
 
+# 最大同时建立连接数
 MAX_CONN = 5
+
+# 从服务器地址
+SLAVES = []
+
+# 数据同步日志文件路径
+BIN_LOG = ''

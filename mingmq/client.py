@@ -8,7 +8,8 @@ import socket
 
 from mingmq.message import (ReqLoginMessage, package_message, MessageWindow,
                             SUCCESS, ReqLogoutMessage, ReqDeclareQueueMessage,
-                            ReqGetDataFromQueueMessage, ReqSendDataToQueueMessage,
+                            ReqGetDataFromQueueMessage,
+                            ReqSendDataToQueueMessage,
                             ReqACKMessage)
 from mingmq.utils import hex_to_str, to_json
 
