@@ -15,8 +15,7 @@ server_address = ("127.0.0.1", 8888)
 serversocket.bind(server_address)
 # 监听，并设置最大连接数
 serversocket.listen(10)
-print
-"服务器启动成功，监听IP：", server_address
+print("服务器启动成功，监听IP：", server_address)
 # 服务端设置非阻塞
 serversocket.setblocking(False)
 # 超时时间
@@ -31,24 +30,20 @@ message_queues = {}
 fd_to_socket = {serversocket.fileno(): serversocket, }
 
 while True:
-    print
-    "等待活动连接......"
+    print("等待活动连接......")
     # 轮询注册的事件集合，返回值为[(文件句柄，对应的事件)，(...),....]
     events = epoll.poll(timeout)
     if not events:
-        print
-        "epoll超时无活动连接，重新轮询......"
+        print("epoll超时无活动连接，重新轮询......")
         continue
-    print
-    "有", len(events), "个新事件，开始处理......"
+    print("有", len(events), "个新事件，开始处理......")
 
     for fd, event in events:
         socket = fd_to_socket[fd]
         # 如果活动socket为当前服务器socket，表示有新连接
         if socket == serversocket:
             connection, address = serversocket.accept()
-            print
-            "新连接：", address
+            print("新连接：", address)
             # 新连接socket设置为非阻塞
             connection.setblocking(False)
             # 注册新连接fd到待读事件集合
@@ -56,11 +51,10 @@ while True:
             # 把新连接的文件句柄以及对象保存到字典
             fd_to_socket[connection.fileno()] = connection
             # 以新连接的对象为键值，值存储在队列中，保存每个连接的信息
-            message_queues[connection] = Queue.Queue()
+            message_queues[connection] = Queue()
         # 关闭事件
         elif event & select.EPOLLHUP:
-            print
-            'client close'
+            print('client close')
             # 在epoll中注销客户端的文件句柄
             epoll.unregister(fd)
             # 关闭客户端的文件句柄
@@ -72,8 +66,7 @@ while True:
             # 接收数据
             data = socket.recv(1024)
             if data:
-                print
-                "收到数据：", data, "客户端：", socket.getpeername()
+                print("收到数据：", data, "客户端：", socket.getpeername())
                 # 将数据放入对应客户端的字典
                 message_queues[socket].put(data)
                 # 修改读取到消息的连接到等待写事件集合(即对应客户端收到消息后，再将其fd修改并加入写事件集合)
@@ -84,13 +77,11 @@ while True:
                 # 从字典中获取对应客户端的信息
                 msg = message_queues[socket].get_nowait()
             except Queue.Empty:
-                print
-                socket.getpeername(), " queue empty"
+                print(socket.getpeername(), " queue empty")
                 # 修改文件句柄为读事件
                 epoll.modify(fd, select.EPOLLIN)
             else:
-                print
-                "发送数据：", data, "客户端：", socket.getpeername()
+                print("发送数据：", data, "客户端：", socket.getpeername())
                 # 发送数据
                 socket.send(msg)
 
