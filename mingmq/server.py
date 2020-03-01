@@ -30,6 +30,8 @@ class Server:
         self._epoll.register(self._sock.fileno(), select.EPOLLIN)  # 注册服务监听文件描述符到等待读事件集合
         self._fd_to_handler = dict()  # 文件描述符对应socket
 
+        self._fd_to_handler[self.fileno()] = self
+
     def fileno(self):
         return self._sock.fileno()
 

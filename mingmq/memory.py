@@ -9,8 +9,6 @@ QueueAckMemory用于存放指定任务队列的未确认任务id号；
 3. 客户端每当从指定队列名中获取一个任务时，先在QueueMemory中指定的Queue中获取一个任务，然后将任务id
 放入QueueAckMemory中，这样也不至于让QeueuAckMemory变得很占内存空间；
 4. 每当客户端确认一个消息时，在QueueAckMemory中pop出指定消息id；
-
-注意：如果是多线程，务必注意线程安全问题。
 """
 
 from queue import Queue

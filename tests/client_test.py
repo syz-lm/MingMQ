@@ -10,28 +10,30 @@ from mingmq.client import Client
 
 logging.basicConfig(level=logging.DEBUG)
 
+HTML = ''
+with open('./test.html', encoding='utf-8') as file_desc:
+    HTML = file_desc.read()
 
-def main():
+def init_cli(first=False):
     """
     客户端测试
     """
-    client = Client('127.0.0.1', 8080)
+    client = Client('192.168.1.30', 8080)
 
     if client.login('admin', '123456') is not True:
         sys.exit(-1)
 
-    print('登录成功')
+    # print('登录成功')
+    if first:
+        client.declare_queue('hello')
 
-    client.declare_queue('hello')
+    return client
 
-    print('声明队列成功')
+def send(client):
+    client.send_data_to_queue('hello', HTML)
 
-    html = ''
-    with open('./test.html', encoding='utf-8') as file_desc:
-        html = file_desc.read()
-    client.send_data_to_queue('hello', html)
-
-    print('发送任务成功')
+def get(client):
+    # print('发送任务成功')
 
     message_data = client.get_data_from_queue('hello')
 
@@ -41,23 +43,33 @@ def main():
 
     print('消息确认成功')
 
+def close(client):
     client.logout('admin', '123456')
-
     client.close()
 
+def main():
+    clis = []
 
-def bingfa():
-    """
-    并发测试
-    """
-    # for i in range(100):
-    while 1:
-        if active_count() <= 100:
-            Thread(target=main).start()
+    for i in range(5000):
+        if i == 0:
+            clis.append(init_cli(True))
+        else:
+            clis.append(init_cli())
+
+    i = 0
+    while i < len(clis):
+        if active_count() <= 500:
+            send(clis[i])
+            i += 1
         else:
             time.sleep(2)
 
+    i = 0
+    while i < len(clis):
+        if active_count() <= 500:
+            get(clis[i])
+            i += 1
+        else:
+            time.sleep(2)
 
-# for i in range(100):
-#     main()
-bingfa()
+main()

@@ -5,5 +5,5 @@ import logging
 
 from mingmq.server import main
 
-logging.basicConfig(level=logging.DEBUG)
+# logging.basicConfig(level=logging.DEBUG)
 main("./config_file.json")
