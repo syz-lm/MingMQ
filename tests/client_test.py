@@ -50,7 +50,7 @@ def close(client):
 def main():
     clis = []
 
-    for i in range(5000):
+    for i in range(10):
         if i == 0:
             clis.append(init_cli(True))
         else:
@@ -58,18 +58,21 @@ def main():
 
     i = 0
     while i < len(clis):
-        if active_count() <= 500:
-            send(clis[i])
+        if active_count() <= 5:
+            Thread(target=send, args=(clis[i], )).start()
             i += 1
         else:
             time.sleep(2)
 
     i = 0
     while i < len(clis):
-        if active_count() <= 500:
-            get(clis[i])
+        if active_count() <= 5:
+            Thread(target=get, args=(clis[i],)).start()
             i += 1
         else:
             time.sleep(2)
+
+    for t in clis:
+        close(t)
 
 main()
