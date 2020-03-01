@@ -1,7 +1,6 @@
 """
 消息测试
 """
-from mingmq.message import ReqLoginMessage, MessageWindow
 
 # print(ReqLoginMessage('admin', '123456'))
 # # print(ReqLoginMessage({'user_name': 'admin', 'passwd': '123456', 'type': 'LOGIN'})) err

@@ -4,6 +4,7 @@
 import json
 import traceback
 from io import StringIO
+
 from mingmq import message
 
 
@@ -29,7 +30,7 @@ def hex_to_str(stri):
     """
     16进制转字符串
     """
-    #return ''.join([chr(i) for i in [int(b, 16) for b in stri.split(' ')]])
+    # return ''.join([chr(i) for i in [int(b, 16) for b in stri.split(' ')]])
     buf = StringIO()
 
     for hex_str in stri.split(' '):
@@ -46,6 +47,7 @@ def str_to_bin(stri):
     字符串转二进制
     """
     return ' '.join([bin(ord(c)) for c in stri])
+
 
 def bin_to_str(stri):
     """

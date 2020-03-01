@@ -18,6 +18,7 @@ class Client:
     """
     服务器客户端
     """
+
     def __init__(self, host, port):
         self._message_window = MessageWindow()
 

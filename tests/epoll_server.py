@@ -1,8 +1,8 @@
 #!/usr/bin/env python
 # -*- coding:utf-8 -*-
 
-import socket
 import select
+import socket
 from queue import Queue, Empty
 
 # 创建socket对象

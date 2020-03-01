@@ -2,16 +2,15 @@
 数据类型
 """
 
-import time
 import logging
-from threading import Lock
-from queue import Queue
+import time
 from io import StringIO
+from queue import Queue
+from threading import Lock
 
 from mingmq.utils import str_to_hex
 
 _LOCK = Lock()
-
 
 MESSAGE_TYPE = {
     'LOGIN': 0,  # 登录

@@ -7,6 +7,7 @@ import time
 from threading import Thread, active_count
 
 from mingmq.client import Client
+
 logging.basicConfig(level=logging.DEBUG)
 
 
