@@ -14,10 +14,6 @@ QueueAckMemory用于存放指定任务队列的未确认任务id号；
 """
 
 from queue import Queue
-from threading import RLock
-
-# 声明一个锁用于并发数据线程安全
-_LOCK = RLock()
 
 
 class QueueMemory:
@@ -34,11 +30,10 @@ class QueueMemory:
         :param queue_name: str，队列名称
         :return: boolean，True成功，False失败
         """
-        with _LOCK:
-            if queue_name not in self._map:
-                self._map[queue_name] = Queue()
-                return True
-            return False
+        if queue_name not in self._map:
+            self._map[queue_name] = Queue()
+            return True
+        return False
 
     def put(self, queue_name, message):
         """
@@ -47,11 +42,10 @@ class QueueMemory:
         :param message: str，消息
         :return: boolean，True成功，False失败
         """
-        with _LOCK:
-            if queue_name in self._map:
-                self._map[queue_name].put_nowait(message)
-                return True
-            return False
+        if queue_name in self._map:
+            self._map[queue_name].put_nowait(message)
+            return True
+        return False
 
     def get(self, queue_name):
         """
@@ -59,10 +53,9 @@ class QueueMemory:
         :param queue_name: str，队列名
         :return: str，None则表示没有获取到数据
         """
-        with _LOCK:
-            if queue_name in self._map and self._map[queue_name].qsize() != 0:
-                return self._map[queue_name].get_nowait()
-            return None
+        if queue_name in self._map and self._map[queue_name].qsize() != 0:
+            return self._map[queue_name].get_nowait()
+        return None
 
 
 class QueueAckMemory:
@@ -81,11 +74,10 @@ class QueueAckMemory:
         :param queue_name: str，队列名
         :return: boolean，True成功，False失败
         """
-        with _LOCK:
-            if queue_name not in self._map:
-                self._map[queue_name] = set()
-                return True
-            return False
+        if queue_name not in self._map:
+            self._map[queue_name] = set()
+            return True
+        return False
 
     def put(self, queue_name, message_id):
         """
@@ -94,11 +86,10 @@ class QueueAckMemory:
         :param message_id: str，消息id
         :return: bookean，True成功，False失败
         """
-        with _LOCK:
-            if queue_name in self._map:
-                self._map[queue_name].add(message_id)
-                return True
-            return False
+        if queue_name in self._map:
+            self._map[queue_name].add(message_id)
+            return True
+        return False
 
     def get(self, queue_name, message_id):
         """
@@ -107,11 +98,10 @@ class QueueAckMemory:
         :param message_id: str，消息id
         :return: str，消息id , None表示失败
         """
-        with _LOCK:
-            if queue_name in self._map and len(self._map[queue_name]) != 0:
-                try:
-                    self._map[queue_name].remove(message_id)
-                    return True
-                except KeyError:
-                    return False
-            return False
+        if queue_name in self._map and len(self._map[queue_name]) != 0:
+            try:
+                self._map[queue_name].remove(message_id)
+                return True
+            except KeyError:
+                return False
+        return False

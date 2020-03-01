@@ -6,11 +6,9 @@ import logging
 import time
 from io import StringIO
 from queue import Queue
-from threading import Lock
 
 from mingmq.utils import str_to_hex
 
-_LOCK = Lock()
 
 MESSAGE_TYPE = {
     'LOGIN': 0,  # 登录
@@ -170,8 +168,7 @@ def gen_message_id():
     """
     生成全局唯一任务id
     """
-    with _LOCK:
-        return 'task_id:' + str(time.time())
+    return 'task_id:' + str(time.time())
 
 
 class ReqACKMessage(dict):
