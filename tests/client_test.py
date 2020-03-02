@@ -3,8 +3,7 @@
 """
 import logging
 import sys
-import time
-from threading import Thread, active_count
+from threading import Thread
 
 from mingmq.client import Client
 
@@ -14,11 +13,12 @@ HTML = ''
 with open('./test.html', encoding='utf-8') as file_desc:
     HTML = file_desc.read()
 
+
 def init_cli(first=False):
     """
     客户端测试
     """
-    client = Client('192.168.1.30', 8080)
+    client = Client('localhost', 8080)
 
     if client.login('admin', '123456') is not True:
         sys.exit(-1)
@@ -29,8 +29,10 @@ def init_cli(first=False):
 
     return client
 
+
 def send(client):
     client.send_data_to_queue('hello', HTML)
+
 
 def get(client):
     # print('发送任务成功')
@@ -43,36 +45,39 @@ def get(client):
 
     print('消息确认成功')
 
+
 def close(client):
     client.logout('admin', '123456')
     client.close()
 
-def main():
+
+def main(tsn=10):
     clis = []
 
-    for i in range(10):
+    for i in range(tsn):
         if i == 0:
             clis.append(init_cli(True))
         else:
             clis.append(init_cli())
 
-    i = 0
-    while i < len(clis):
-        if active_count() <= 5:
-            Thread(target=send, args=(clis[i], )).start()
-            i += 1
-        else:
-            time.sleep(2)
+    ts = []
+    for cli in clis:
+        t = Thread(target=send, args=(cli,))
+        t.start()
+        ts.append(t)
 
-    i = 0
-    while i < len(clis):
-        if active_count() <= 5:
-            Thread(target=get, args=(clis[i],)).start()
-            i += 1
-        else:
-            time.sleep(2)
+    for t in ts: t.join()
 
-    for t in clis:
-        close(t)
+    ts = []
+    for cli in clis:
+        t = Thread(target=get, args=(cli,))
+        t.start()
+        ts.append(t)
 
-main()
+    for t in ts: t.join()
+
+    for cli in clis:
+        close(cli)
+
+
+main(100)

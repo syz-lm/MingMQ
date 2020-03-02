@@ -41,7 +41,7 @@ class Handler:
 
         return data
 
-    def handle_read(self):
+    def _handle_read(self):
         data = self._recv(1024)
 
         logging.info('客户端发来数据 [%s]', repr(data))
@@ -51,11 +51,22 @@ class Handler:
         else:
             self._connected = False
 
-    def handle_write(self):
+    def _handle_write(self):
         # 将data转换成json对象，如果转换失败则发送参数错误消息给客户端，并且返回False
         for buf in self._message_window.loop_message_window():
             logging.info('客户端[IP %s]从消息窗口中取出的消息[%s]。', repr(self._addr), buf[: 100])
             self._deal_message(buf)
+
+    def handle_epoll_mode_read(self):
+        self._handle_read()
+
+    def handle_epoll_mode_write(self):
+        self._handle_write()
+
+    def handle_thread_mode_read(self):
+        while self.is_connected():
+            self._handle_read()
+            self._handle_write()
 
     def _deal_message(self, buf):
         chex = None

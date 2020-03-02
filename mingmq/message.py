@@ -9,7 +9,6 @@ from queue import Queue
 
 from mingmq.utils import str_to_hex
 
-
 MESSAGE_TYPE = {
     'LOGIN': 0,  # 登录
     'LOGOUT': 1,  # 退出
