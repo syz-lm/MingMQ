@@ -1,12 +1,8 @@
 """ 服务器 """
 
-import json
 import logging
-
-import socket
-import sys
-import traceback
 import platform
+import socket
 
 if platform.platform().startswith('Linux'):
     import select
@@ -15,19 +11,21 @@ else:
     from threading import Thread
     from mingmq.memory import SyncQueueMemory as QueueMemory, SyncQueueAckMemory as QueueAckMemory
 
-from mingmq import settings
 from mingmq.handler import Handler
+from mingmq.status import ServerStatus
 
 
 class Server:
-    def __init__(self):
+    def __init__(self, server_status: ServerStatus):
+        self._server_status = server_status
+
         self._queue_memory = QueueMemory()  # 定义消息队列内存
         self._queue_ack_memory = QueueAckMemory()  # 定义消息队列应答内存
 
         self._sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         self._sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)  # 设置IP地址复用
-        self._sock.bind((settings.HOST, settings.PORT))
-        self._sock.listen(settings.MAX_CONN)  # 监听并设置最大连接数
+        self._sock.bind((self._server_status.get_host(), self._server_status.get_port()))
+        self._sock.listen(self._server_status.get_max_conn())  # 监听并设置最大连接数
 
         plat = platform.platform()
 
@@ -36,7 +34,7 @@ class Server:
 
     def _init_server_socket(self):
         self._sock.setblocking(False)  # 服务设置非阻塞
-        self._timeout = 10  # 超时时间
+        self._timeout = self._server_status.get_timeout()  # 超时时间
         self._epoll = select.epoll()  # 创建epoll事件对象，后续要监控的事件添加到其中
         self._epoll.register(self._sock.fileno(), select.EPOLLIN)  # 注册服务监听文件描述符到等待读事件集合
         self._fd_to_handler = dict()  # 文件描述符对应socket
@@ -44,9 +42,7 @@ class Server:
         self._fd_to_handler[self._fileno()] = self
 
     def serv_forever(self):
-        plat = platform.platform()
-
-        if plat.startswith('Linux'):
+        if platform.platform().startswith('Linux'):
             self._epoll_mode()
         else:
             self._thread_mode()
@@ -57,7 +53,7 @@ class Server:
     def _thread_mode(self):
         while True:
             client_sock, addr = self._sock.accept()
-            handler = Handler(client_sock, addr, self._queue_memory, self._queue_ack_memory)
+            handler = Handler(client_sock, addr, self._queue_memory, self._queue_ack_memory, self._server_status)
             Thread(target=handler.handle_thread_mode_read).start()
 
     def _epoll_mode(self):
@@ -92,7 +88,8 @@ class Server:
         logging.info("新连接：%s", addr)
         conn.setblocking(False)  # 新连接socket设置为非阻塞
         self._epoll.register(conn.fileno(), select.EPOLLIN)  # 注册新连接fd到待读事件集合
-        self._fd_to_handler[conn.fileno()] = Handler(conn, addr, self._queue_memory, self._queue_ack_memory)
+        self._fd_to_handler[conn.fileno()] = Handler(conn, addr, self._queue_memory,
+                                                     self._queue_ack_memory, self._server_status)
 
     def _close_event(self, fd):
         logging.info('client close')
@@ -120,37 +117,3 @@ class Server:
             self._epoll.close()  # 关闭epoll
 
         self._sock.close()  # 关闭服务器socket
-
-
-def main(config_file=None):
-    with open(config_file) as file_desc:
-        config = json.load(file_desc)
-        settings.HOST = config['HOST']
-        settings.PORT = config['PORT']
-        settings.MAX_CONN = config['MAX_CONN']
-        settings.USER_NAME = config['USER_NAME']
-        settings.PASSWD = config['PASSWD']
-
-    logging.info('服务器[IP %s PORT %s]正在启动。', repr(settings.HOST), repr(settings.PORT))
-    try:
-        server = Server()
-        logging.info('启动成功。')
-    except (ConnectionRefusedError, ConnectionAbortedError, ConnectionResetError, ConnectionError):
-        print(traceback.print_exc())
-        logging.info('启动失败。')
-        sys.exit(-1)
-
-    try:
-        server.serv_forever()
-    except KeyboardInterrupt:
-        logging.info('用户使用键盘中断了程序。')
-    except (ConnectionRefusedError, ConnectionAbortedError, ConnectionResetError, ConnectionError):
-        print(traceback.print_exc())
-        logging.info('运行时出现无法预知的错误。')
-
-        try:
-            server.close()
-            logging.info('服务器已关闭。')
-        except (ConnectionRefusedError, ConnectionAbortedError, ConnectionResetError, ConnectionError):
-            print(traceback.print_exc())
-            logging.info('服务器关闭时出现错误。')

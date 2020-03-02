@@ -2,15 +2,23 @@
 
 import json
 import logging
+import socket
 
 from mingmq.memory import QueueMemory, QueueAckMemory
 from mingmq.message import (ResMessage, SUCCESS, FAIL, MESSAGE_TYPE, package_message, MessageWindow, Task)
-from mingmq.settings import USER_NAME, PASSWD
 from mingmq.utils import hex_to_str, to_json, check_msg
+from mingmq.status import ServerStatus
 
 
 class Handler:
-    def __init__(self, sock, addr, queue_memory: QueueMemory, queue_ack_memory: QueueAckMemory):
+    def __init__(
+        self,
+        sock: socket.socket,
+        addr: str,
+        queue_memory: QueueMemory,
+        queue_ack_memory: QueueAckMemory,
+        server_status: ServerStatus
+    ):
         self._sock = sock
         self._addr = addr
         self._queue_memory = queue_memory
@@ -19,6 +27,7 @@ class Handler:
         self._connected = False
         self._message_window = MessageWindow()
         self._connected = True
+        self.server_status = server_status
 
     def is_connected(self):
         return self._connected
@@ -202,7 +211,8 @@ class Handler:
             user_name = msg['user_name']
             passwd = msg['passwd']
 
-            if USER_NAME != user_name or PASSWD != passwd:
+            if self.server_status.get_user_name() != user_name or \
+                    self.server_status.get_passwd() != passwd:
                 res_msg = ResMessage(MESSAGE_TYPE['LOGIN'], FAIL, [])
                 res_pkg = package_message(json.dumps(res_msg))
                 self._send_data(res_pkg)
@@ -219,7 +229,8 @@ class Handler:
         if self._data_wrong('_logout', ('user_name', 'passwd'), msg) is not False:
             user_name = msg['user_name']
             passwd = msg['passwd']
-            if USER_NAME != user_name or PASSWD != passwd:
+            if self.server_status.get_user_name() != user_name or \
+                    self.server_status.get_passwd() != passwd:
                 res_msg = ResMessage(MESSAGE_TYPE['LOGOUT'], FAIL, [])
                 res_pkg = package_message(json.dumps(res_msg))
                 self._send_data(res_pkg)

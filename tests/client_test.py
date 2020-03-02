@@ -18,9 +18,9 @@ def init_cli(first=False):
     """
     客户端测试
     """
-    client = Client('localhost', 8080)
+    client = Client('localhost', 15673)
 
-    if client.login('admin', '123456') is not True:
+    if client.login('mingmq', 'mm5201314') is not True:
         sys.exit(-1)
 
     # print('登录成功')
@@ -47,7 +47,7 @@ def get(client):
 
 
 def close(client):
-    client.logout('admin', '123456')
+    client.logout('mingmq', 'mm5201314')
     client.close()
 
 

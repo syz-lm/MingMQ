@@ -11,12 +11,12 @@ QueueAckMemory用于存放指定任务队列的未确认任务id号；
 4. 每当客户端确认一个消息时，在QueueAckMemory中pop出指定消息id；
 """
 
-from queue import Queue
-
 import platform
+from queue import Queue
 
 if not platform.platform().startswith('Linux'):
     from threading import Lock
+
     _LOCK = Lock()
 
 
