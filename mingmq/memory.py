@@ -125,10 +125,11 @@ class SyncQueueMemory:
         :param queue_name: str，队列名称
         :return: boolean，True成功，False失败
         """
-        if queue_name not in self._map:
-            self._map[queue_name] = Queue()
-            return True
-        return False
+        with _LOCK:
+            if queue_name not in self._map:
+                self._map[queue_name] = Queue()
+                return True
+            return False
 
     def put(self, queue_name, message):
         """
@@ -137,10 +138,11 @@ class SyncQueueMemory:
         :param message: str，消息
         :return: boolean，True成功，False失败
         """
-        if queue_name in self._map:
-            self._map[queue_name].put_nowait(message)
-            return True
-        return False
+        with _LOCK:
+            if queue_name in self._map:
+                self._map[queue_name].put_nowait(message)
+                return True
+            return False
 
     def get(self, queue_name):
         """
@@ -148,9 +150,10 @@ class SyncQueueMemory:
         :param queue_name: str，队列名
         :return: str，None则表示没有获取到数据
         """
-        if queue_name in self._map and self._map[queue_name].qsize() != 0:
-            return self._map[queue_name].get_nowait()
-        return None
+        with _LOCK:
+            if queue_name in self._map and self._map[queue_name].qsize() != 0:
+                return self._map[queue_name].get_nowait()
+            return None
 
 
 class SyncQueueAckMemory:

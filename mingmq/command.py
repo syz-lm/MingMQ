@@ -40,6 +40,3 @@ def main():
 
     server = Server(server_status)
     server.serv_forever()
-
-if __name__ == '__main__':
-    main()
