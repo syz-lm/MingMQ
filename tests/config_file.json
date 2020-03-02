@@ -1,7 +1,0 @@
-{
-  "USER_NAME": "admin",
-  "PASSWD": "123456",
-  "HOST": "0.0.0.0",
-  "PORT": 8080,
-  "MAX_CONN": 5
-}
