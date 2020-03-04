@@ -11,7 +11,7 @@ QueueAckMemory用于存放指定任务队列的未确认任务id号；
 4. 每当客户端确认一个消息时，在QueueAckMemory中pop出指定消息id；
 """
 
-import platform
+import platform, time, math
 from queue import Queue
 
 if not platform.platform().startswith('Linux'):
@@ -84,6 +84,13 @@ class QueueMemory:
             return self._map[queue_name].get_nowait()
         return None
 
+    def get_stat(self):
+        tmp = dict()
+        for k, v in self._map.items():
+            tmp[k] = v.qsize()
+
+        return tmp
+
 
 class TaskAckMemory:
     """
@@ -150,6 +157,13 @@ class TaskAckMemory:
             except KeyError:
                 return False
         return False
+
+    def get_stat(self):
+        tmp = dict()
+        for k, v in self._map.items():
+            tmp[k] = len(v)
+
+        return tmp
 
 
 class SyncQueueMemory:
@@ -221,6 +235,13 @@ class SyncQueueMemory:
                 return self._map[queue_name].get_nowait()
             return None
 
+    def get_stat(self):
+        tmp = dict()
+        for k, v in self._map.items():
+            tmp[k] = v.qsize()
+
+        return tmp
+
 
 class SyncTaskAckMemory:
     """
@@ -271,4 +292,60 @@ class SyncTaskAckMemory:
                     return True
                 except KeyError:
                     return False
+            return False
+
+    def get_stat(self):
+        tmp = dict()
+        for k, v in self._map.items():
+            tmp[k] = len(v)
+
+        return tmp
+
+
+class StatMemory:
+    '''
+    队列的send/get/ack速度统计
+    '''
+    def __init__(self):
+        self._map = dict()
+        self._speed = dict()
+        self._last_time = time.time()
+
+    def get_stat(self):
+        if math.ceil((time.time() - self._last_time) / 10) > 2:
+            for k in self._speed.keys():
+                self._speed[k] = 0
+        return self._speed
+
+    def set_speed_per_second(self, key, n):
+        if key in self._speed:
+            self._speed[key] = n
+
+    def set_last_time(self, ts):
+        self._last_time = ts
+
+    def get_last_time(self):
+        return self._last_time
+
+    def declare(self, key):
+        if key not in self._map:
+            self._map[key] = 0
+            self._speed[key] = 0
+            return True
+        else:
+            return False
+
+    def set(self, key, n):
+        if key in self._map:
+            self._map[key] += n
+
+    def get(self, key):
+        if key in self._map:
+            return self._map[key]
+
+    def delete(self, key):
+        if key in self._map:
+            del self._map[key]
+            return True
+        else:
             return False

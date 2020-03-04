@@ -60,6 +60,16 @@ client.close()
 print('关闭成功')
 ```
 
-# MORE
+## Future
+
+* api需要编写main页面和调用mmserver get_stat的接口和前端js代码；
+* api页面需要编写当api main页面上用户点击退出后，默认返回401，需要接收401状态吗并跳转到主页面；
+* client需要编写clear_queue, delete_queue, get_speed，get_stat测试；
+* mmserver需要编写get_stat的handler；
+* 需要开发一些测试，并生成测试数据图片，用以在readme页面进行展示，用来吸引更多的用户；
+* readme需要再修改一下；
+* 需要编写一定的rst文档，编写之前需要去询问一下tornado或者借鉴一下他们rst文档是怎么快速生成的方法；
+
+## More
 
 * https://www.rabbitmq.com/

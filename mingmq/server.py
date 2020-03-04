@@ -9,7 +9,9 @@ if platform.platform().startswith('Linux'):
     from mingmq.memory import QueueMemory, TaskAckMemory
 else:
     from threading import Thread
-    from mingmq.memory import SyncQueueMemory as QueueMemory, SyncTaskAckMemory as QueueAckMemory
+    from mingmq.memory import SyncQueueMemory as QueueMemory, SyncTaskAckMemory as TaskAckMemory
+
+from mingmq.memory import StatMemory
 
 from mingmq.handler import Handler
 from mingmq.status import ServerStatus
@@ -20,6 +22,7 @@ class Server:
         self._server_status = server_status
 
         self._queue_memory = QueueMemory()  # 定义消息队列内存
+        self._stat_memory = StatMemory() # 统计内存
         self._queue_ack_memory = TaskAckMemory()  # 定义消息队列应答内存
 
         self._sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
@@ -53,7 +56,8 @@ class Server:
     def _thread_mode(self):
         while True:
             client_sock, addr = self._sock.accept()
-            handler = Handler(client_sock, addr, self._queue_memory, self._queue_ack_memory, self._server_status)
+            handler = Handler(client_sock, addr, self._queue_memory,
+                              self._queue_ack_memory, self._stat_memory, self._server_status)
             Thread(target=handler.handle_thread_mode_read).start()
 
     def _epoll_mode(self):
@@ -89,7 +93,8 @@ class Server:
         conn.setblocking(False)  # 新连接socket设置为非阻塞
         self._epoll.register(conn.fileno(), select.EPOLLIN)  # 注册新连接fd到待读事件集合
         self._fd_to_handler[conn.fileno()] = Handler(conn, addr, self._queue_memory,
-                                                     self._queue_ack_memory, self._server_status)
+                                                     self._queue_ack_memory, self._stat_memory,
+                                                     self._server_status)
 
     def _close_event(self, fd):
         logging.info('client close')

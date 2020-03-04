@@ -5,13 +5,16 @@ import logging
 import socket
 import struct
 import platform
+import time
 
 if platform.platform().startswith('Linux'):
     from mingmq.memory import QueueMemory, TaskAckMemory
 else:
     from mingmq.memory import SyncQueueMemory as QueueMemory, SyncTaskAckMemory as TaskAckMemory
 
-from mingmq.message import (ResMessage, SUCCESS, FAIL, MESSAGE_TYPE, Task, MAX_DATA_LENGTH)
+from mingmq.memory import StatMemory
+
+from mingmq.message import (ResMessage, SUCCESS, FAIL, MESSAGE_TYPE, Task, MAX_DATA_LENGTH, GET, SEND, ACK)
 from mingmq.utils import to_json, check_msg
 from mingmq.status import ServerStatus
 
@@ -23,11 +26,13 @@ class Handler:
         addr: str,
         queue_memory: QueueMemory,
         task_ack_memory: TaskAckMemory,
+        stat_memory: StatMemory,
         server_status: ServerStatus
     ):
         self._sock = sock
         self._addr = addr
         self._queue_memory = queue_memory
+        self._stat_memory = stat_memory
         self._task_ack_memory = task_ack_memory
         self._session_id = None
         self._connected = True
@@ -135,8 +140,40 @@ class Handler:
             self._send_data_to_queue(msg)
         elif _type == MESSAGE_TYPE['ACK_MESSAGE']:
             self._ack_message(msg)
+        elif _type == MESSAGE_TYPE['GET_SPEED']:
+            self._get_speed(msg)
+        elif _type == MESSAGE_TYPE['GET_STAT']:
+            self._get_stat()
         else:
             self._not_found(msg)
+
+    def _get_stat(self):
+        res_msg = ResMessage(MESSAGE_TYPE['GET_SPEED'], SUCCESS, [{
+            'queue_infor': self._queue_memory.get_stat(),
+            'speed_infor': self._stat_memory.get_stat()
+        }])
+        res_pkg = json.dumps(res_msg).encode()
+        self._send_data(res_pkg)
+
+    def _get_speed(self, msg):
+        if self._data_wrong('_get_speed', ('queue_name', ), msg) is not False:
+            queue_name = msg['queue_name']
+
+            send_stat_var = 'send_' + queue_name
+            get_stat_var = 'get_' + queue_name
+            ack_stat_var = 'ack_' + queue_name
+
+            send_speed = self._stat_memory.get(send_stat_var)
+            get_speed = self._stat_memory.get(get_stat_var)
+            ack_speed = self._stat_memory.get(ack_stat_var)
+
+            res_msg = ResMessage(MESSAGE_TYPE['GET_SPEED'], SUCCESS, [{
+                'send_speed': send_speed,
+                'get_speed': get_speed,
+                'ack_speed': ack_speed
+            }])
+            res_pkg = json.dumps(res_msg).encode()
+            self._send_data(res_pkg)
 
     def _data_wrong(self, opera, args, msg):
         err = 0
@@ -155,54 +192,85 @@ class Handler:
         return True
 
     def _ack_message(self, msg):
-        if self._data_wrong('_ack_message', ('queue_name', 'message_id'), msg) is not False:
-            queue_name = msg['queue_name']
-            message_id = msg['message_id']
-            if self._task_ack_memory.get(queue_name, message_id):
-                res_msg = ResMessage(MESSAGE_TYPE['ACK_MESSAGE'], SUCCESS, [])
-                res_pkg = json.dumps(res_msg).encode()
-                self._send_data(res_pkg)
-            else:
-                res_msg = ResMessage(MESSAGE_TYPE['ACK_MESSAGE'], FAIL, [])
-                res_pkg = json.dumps(res_msg).encode()
-                self._send_data(res_pkg)
+        try:
+            if self._data_wrong('_ack_message', ('queue_name', 'message_id'), msg) is not False:
+                queue_name = msg['queue_name']
+                message_id = msg['message_id']
+                if self._task_ack_memory.get(queue_name, message_id):
+                    res_msg = ResMessage(MESSAGE_TYPE['ACK_MESSAGE'], SUCCESS, [])
+                    res_pkg = json.dumps(res_msg).encode()
+                    self._send_data(res_pkg)
+                else:
+                    res_msg = ResMessage(MESSAGE_TYPE['ACK_MESSAGE'], FAIL, [])
+                    res_pkg = json.dumps(res_msg).encode()
+                    self._send_data(res_pkg)
+        finally:
+            self._stat(ACK, queue_name)
 
     def _send_data_to_queue(self, msg):
-        if self._data_wrong('_send_data_to_queue', ('queue_name', 'message_data'), msg) is not False:
-            queue_name = msg['queue_name']
-            message_data = msg['message_data']
-            task = Task(message_data)
-            if self._queue_memory.put(queue_name, task):
-                res_msg = ResMessage(MESSAGE_TYPE['SEND_DATA_TO_QUEUE'], SUCCESS, [])
-                res_pkg = json.dumps(res_msg).encode()
-                self._send_data(res_pkg)
-            else:
-                res_msg = ResMessage(MESSAGE_TYPE['SEND_DATA_TO_QUEUE'], FAIL, [])
-                res_pkg = json.dumps(res_msg).encode()
-                self._send_data(res_pkg)
+        try:
+            if self._data_wrong('_send_data_to_queue', ('queue_name', 'message_data'), msg) is not False:
+                queue_name = msg['queue_name']
+                message_data = msg['message_data']
+                task = Task(message_data)
+                if self._queue_memory.put(queue_name, task):
+                    res_msg = ResMessage(MESSAGE_TYPE['SEND_DATA_TO_QUEUE'], SUCCESS, [])
+                    res_pkg = json.dumps(res_msg).encode()
+                    self._send_data(res_pkg)
+                else:
+                    res_msg = ResMessage(MESSAGE_TYPE['SEND_DATA_TO_QUEUE'], FAIL, [])
+                    res_pkg = json.dumps(res_msg).encode()
+                    self._send_data(res_pkg)
+        finally:
+            self._stat(SEND, queue_name)
 
     def _get_data_from_queue(self, msg):
-        if self._data_wrong('_get_data_from_queue', ('queue_name',), msg) is not False:
-            queue_name = msg['queue_name']
-            task = self._queue_memory.get(queue_name)
-            if task is not None:
-                message_id = task.message_id
-                self._task_ack_memory.put(queue_name, message_id)
+        try:
+            if self._data_wrong('_get_data_from_queue', ('queue_name',), msg) is not False:
+                queue_name = msg['queue_name']
+                task = self._queue_memory.get(queue_name)
+                if task is not None and \
+                        self._task_ack_memory.put(queue_name, task.message_id):
+                    res_msg = ResMessage(MESSAGE_TYPE['GET_DATA_FROM_QUEUE'], SUCCESS, [task])
+                    res_pkg = json.dumps(res_msg).encode()
+                    self._send_data(res_pkg)
+                else:
+                    res_msg = ResMessage(MESSAGE_TYPE['GET_DATA_FROM_QUEUE'], FAIL, [task])
+                    res_pkg = json.dumps(res_msg).encode()
+                    self._send_data(res_pkg)
+        finally:
+            self._stat(GET, queue_name)
 
-                res_msg = ResMessage(MESSAGE_TYPE['GET_DATA_FROM_QUEUE'], SUCCESS, [task])
-                res_pkg = json.dumps(res_msg).encode()
-                self._send_data(res_pkg)
-            else:
-                res_msg = ResMessage(MESSAGE_TYPE['GET_DATA_FROM_QUEUE'], FAIL, [task])
-                res_pkg = json.dumps(res_msg).encode()
-                self._send_data(res_pkg)
+    def _stat(self, action, queue_name):
+        stat_var = None
+        if action == SEND:
+            stat_var = 'send_' + queue_name
+
+        elif action == GET:
+            stat_var = 'get_' + queue_name
+
+        elif action == ACK:
+            stat_var = 'ack_' + queue_name
+
+        self._stat_memory.set(stat_var, 1)
+
+        now = time.time()
+
+        last_time = self._stat_memory.get_last_time()
+        t = now - last_time
+        if t > 10:
+            n = self._stat_memory.get(stat_var)
+            self._stat_memory.set_speed_per_second(stat_var, n / t)
+            self._stat_memory.set_last_time(now)
 
     def _declare_queue(self, msg):
         if self._data_wrong('_declare_queue', ('queue_name',), msg) is not False:
             queue_name = msg['queue_name']
-            if self._queue_memory.decleare(queue_name):
-                self._task_ack_memory.declare(queue_name)
-
+            if self._queue_memory.decleare(queue_name) and \
+                    self._task_ack_memory.declare(queue_name) and \
+                        self._stat_memory.declare('send_' + queue_name) and \
+                            self._stat_memory.declare('get_' + queue_name) and \
+                                self._stat_memory.declare('ack_' + queue_name):
                 res_msg = ResMessage(MESSAGE_TYPE['DECLARE_QUEUE'], SUCCESS, [])
                 res_pkg = json.dumps(res_msg).encode()
                 self._send_data(res_pkg)
@@ -219,8 +287,11 @@ class Handler:
     def _delete_queue(self, msg):
         if self._data_wrong('_declare_queue', ('queue_name',), msg) is not False:
             queue_name = msg['queue_name']
-            if self._queue_memory.delete(queue_name):
-                self._task_ack_memory.delete(queue_name)
+            if self._queue_memory.delete(queue_name) and \
+                    self._task_ack_memory.delete(queue_name) and \
+                        self._stat_memory.delete('send_' + queue_name) and \
+                            self._stat_memory.delete('get_' + queue_name) and \
+                                self._stat_memory.delete('ack_' + queue_name):
 
                 res_msg = ResMessage(MESSAGE_TYPE['DECLARE_QUEUE'], SUCCESS, [])
                 res_pkg = json.dumps(res_msg).encode()
@@ -233,9 +304,8 @@ class Handler:
     def _clear_queue(self, msg):
         if self._data_wrong('_clear_queue', ('queue_name',), msg) is not False:
             queue_name = msg['queue_name']
-            if self._queue_memory.clear(queue_name):
-                self._task_ack_memory.clear(queue_name)
-
+            if self._queue_memory.clear(queue_name) and \
+                    self._task_ack_memory.clear(queue_name):
                 res_msg = ResMessage(MESSAGE_TYPE['DECLARE_QUEUE'], SUCCESS, [])
                 res_pkg = json.dumps(res_msg).encode()
                 self._send_data(res_pkg)

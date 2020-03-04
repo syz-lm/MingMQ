@@ -20,8 +20,7 @@ def init_cli(first=False):
     """
     client = Client('192.168.1.30', 15673)
 
-    if client.login('mingmq', 'mm5201314') is not True:
-        sys.exit(-1)
+    client.login('mingmq', 'mm5201314')
 
     print('登录成功')
     if first:
@@ -40,9 +39,14 @@ def get(client):
 
     print('获取任务成功', message_data)
 
-    client.ack_message('hello', message_data[0]['message_id'])
+    json_obj = message_data['json_obj']
+    if len(json_obj) != 0:
+        message_id = json_obj[0]['message_id']
 
-    print('消息确认成功')
+    if message_id:
+        client.ack_message('hello', message_id)
+
+        print('消息确认成功')
 
 
 def close(client):
@@ -81,4 +85,4 @@ def main(tsn=10):
         close(cli)
 
 
-main(10)
+main(200)

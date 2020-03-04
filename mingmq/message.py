@@ -22,6 +22,8 @@ MESSAGE_TYPE = {
     'DATA_WRONG': 8,  # 数据错误
     'DELETE_QUEUE': 9, # 删除队列
     'CLEAR_QUEUE': 10, # 清空队列数据
+    'GET_SPEED': 11, # 获取速度
+    'GET_STAT': 12, # 获取所有统计数据
 }
 
 # 数据最大长度
@@ -31,6 +33,38 @@ MAX_DATA_LENGTH = 1024 * 1024 * 16 - 1
 SUCCESS = 1
 # 操作失败
 FAIL = 0
+
+GET = 0
+SEND = 1
+ACK = 2
+
+class ReqGetStatMessage(dict):
+    '''
+    获取统计数据
+    '''
+
+    def __init__(self):
+        self.type = MESSAGE_TYPE['GET_STAT']
+
+        super().__init__({
+            'type': self.type
+        })
+
+
+class ReqGetSpeedMessage(dict):
+    """
+    获取队列的速度
+    """
+
+    def __init__(self, queue_name):
+        self.type = MESSAGE_TYPE['GET_SPEED']
+        self.queue_name = queue_name
+
+        super().__init__({
+            'type': self.type,
+            'queue_name': self.queue_name,
+        })
+
 
 class ReqDeleteQueueMessage(dict):
     """

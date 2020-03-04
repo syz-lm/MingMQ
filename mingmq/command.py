@@ -1,5 +1,6 @@
 import argparse
 import logging
+import tempfile
 
 from mingmq.server import Server
 from mingmq.status import ServerStatus
@@ -26,6 +27,9 @@ def main():
     print('正在启动，服务器的配置为\nIP/端口:%s:%d, 用户名/密码:%s/%s，最大并发数:%d，超时时间: %d' %
           (flags.HOST, flags.PORT, flags.USER_NAME, flags.PASSWD,
            flags.MAX_CONN, flags.TIMEOUT))
+
+    with open('/tmp/mingmq', 'w') as f:
+        f.write(flags.USER_NAME + '\n' + flags.PASSWD + '\n' + str(flags.PORT))
 
     logging.basicConfig(level=logging.INFO)
 

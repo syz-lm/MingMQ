@@ -2,7 +2,7 @@ from setuptools import find_packages, setup
 
 setup(
     name='mingmq',
-    version='1.0.3',
+    version='1.0.4',
     url='https://github.com/zswj123/mingmq',
     license='',
     maintainer='zswj123',
@@ -12,7 +12,10 @@ setup(
     packages=find_packages(),
     include_package_data=True,
     zip_safe=False,
-    install_requires=[],
+    install_requires=[
+        'flask',
+        'flask_httpauth'
+    ],
     entry_points="""
     [console_scripts]
     mmserver = mingmq.command:main
