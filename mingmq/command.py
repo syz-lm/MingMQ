@@ -5,9 +5,6 @@ from mingmq.server import Server
 from mingmq.status import ServerStatus
 
 
-def _check_flags(flags):
-    return True
-
 def main():
     parser = argparse.ArgumentParser('欢迎使用MingMQ消息队列服务器！\n')
 
@@ -23,20 +20,17 @@ def main():
                         help='输入服务器密码，默认，mm5201314')
     parser.add_argument('--TIMEOUT', type=int, default='10',
                         help='输入服务器超时时间（仅linux下有效），默认，10')
-    parser.add_argument('--BIN_LOG', type=str, default='/var/log/mingmq',
-                        help='输入服务器的日志路径，默认，/var/log/mingmq，' + \
-                             '请使用一个空间较大数据盘作为路径')
 
     flags = parser.parse_args()
 
-    print('正在启动，服务器的配置为\nIP/端口:%s:%d, 用户名/密码:%s/%s，最大连接数:%d，超时时间: %d，日志路径:%s' %
+    print('正在启动，服务器的配置为\nIP/端口:%s:%d, 用户名/密码:%s/%s，最大连接数:%d，超时时间: %d' %
           (flags.HOST, flags.PORT, flags.USER_NAME, flags.PASSWD,
-           flags.MAX_CONN, flags.TIMEOUT, flags.BIN_LOG))
+           flags.MAX_CONN, flags.TIMEOUT))
 
     logging.basicConfig(level=logging.INFO)
 
     server_status = ServerStatus(flags.HOST, flags.PORT, flags.MAX_CONN,
-                                 flags.USER_NAME, flags.PASSWD, flags.TIMEOUT, flags.BIN_LOG)
+                                 flags.USER_NAME, flags.PASSWD, flags.TIMEOUT)
 
     server = Server(server_status)
     server.serv_forever()

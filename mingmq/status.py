@@ -1,10 +1,9 @@
 class ServerStatus:
-    def __init__(self, host, port, max_conn, user_name, passwd, timeout, bin_log):
+    def __init__(self, host, port, max_conn, user_name, passwd, timeout):
         self._host = host
         self._port = port
         self._user_name = user_name
         self._passwd = passwd
-        self._bin_log = bin_log
         self._max_conn = max_conn
         self._timeout = timeout
 
@@ -19,9 +18,6 @@ class ServerStatus:
 
     def get_passwd(self):
         return self._passwd
-
-    def get_bin_log(self):
-        return self._bin_log
 
     def get_max_conn(self):
         return self._max_conn

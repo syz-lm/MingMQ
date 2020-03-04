@@ -9,6 +9,7 @@ from queue import Queue
 
 from mingmq.utils import str_to_hex
 
+# 命令
 MESSAGE_TYPE = {
     'LOGIN': 0,  # 登录
     'LOGOUT': 1,  # 退出
@@ -18,18 +19,47 @@ MESSAGE_TYPE = {
     'ACK_MESSAGE': 5,  # 消息确认
     'NOT_FOUND': 6,  # 找不到这个方法
     'FORBIDDEN': 7,  # 阻止访问
-    'DATA_WRONG': 8  # 数据错误
+    'DATA_WRONG': 8,  # 数据错误
+    'DELETE_QUEUE': 9, # 删除队列
+    'CLEAR_QUEUE': 10, # 清空队列数据
 }
 
-# 数据包开始
-MESSAGE_BEGIN = 'K'
-# 数据包结束
-MESSAGE_END = 'J'
+# 数据最大长度
+MAX_DATA_LENGTH = 1024 * 1024 * 16 - 1
 
 # 操作成功
 SUCCESS = 1
 # 操作失败
 FAIL = 0
+
+class ReqDeleteQueueMessage(dict):
+    """
+    删除队列
+    """
+
+    def __init__(self, queue_name):
+        self.type = MESSAGE_TYPE['DELETE_QUEUE']
+        self.queue_name = queue_name
+
+        super().__init__({
+            'type': self.type,
+            'queue_name': self.queue_name,
+        })
+
+
+class ReqClearQueueMessage(dict):
+    """
+    清空队列
+    """
+
+    def __init__(self, queue_name):
+        self.type = MESSAGE_TYPE['CLEAR_QUEUE']
+        self.queue_name = queue_name
+
+        super().__init__({
+            'type': self.type,
+            'queue_name': self.queue_name,
+        })
 
 
 class ReqLoginMessage(dict):
@@ -219,18 +249,26 @@ def package_message(data):
     """
     封包
     """
-    res_pkg = MESSAGE_BEGIN + str_to_hex(data) + MESSAGE_END
+    res_pkg = MessageWindow.MESSAGE_BEGIN + str_to_hex(data) + MessageWindow.MESSAGE_END
     return res_pkg.encode()
 
 
 class MessageWindow:
     """
+    这段代码，我想了3天，还进行优化过，我真的舍不得删掉。
+    虽然，我通过pymysql源码找到了更好的算法。
+
     消息窗口
     """
 
+    # 数据包开始
+    MESSAGE_BEGIN = 'K'
+    # 数据包结束
+    MESSAGE_END = 'J'
+
     def __init__(self):
-        self.current_buffer = StringIO()
-        self.message_window = Queue()
+        self._current_buffer = StringIO()
+        self._message_window = Queue()
 
     def grouping_message(self, data):
         """
@@ -242,17 +280,17 @@ class MessageWindow:
 
         if len(data) > 0:
             try:
-                start_count = data.index(MESSAGE_BEGIN)
+                start_count = data.index(MessageWindow.MESSAGE_BEGIN)
             except ValueError:
                 pass
             try:
-                end_count = data.index(MESSAGE_END)
+                end_count = data.index(MessageWindow.MESSAGE_END)
             except ValueError:
                 pass
 
             # `aaaa`
             if start_count == -1 and end_count == -1:
-                self.current_buffer.write(data)
+                self._current_buffer.write(data)
 
             # 正常数据：`Kaaa', 错误数据：`aaKaa'
             elif start_count != -1 and end_count == -1:
@@ -260,42 +298,42 @@ class MessageWindow:
                     err_data = data[:start_count]
                     logging.info('客户端发送的数据可能被网络中被篡改：%s', err_data)
 
-                self.current_buffer.write(data[start_count + 1:])
+                self._current_buffer.write(data[start_count + 1:])
 
             # `Jaa`, `aaJaa`, `aaj`
             elif start_count == -1 and end_count != -1:
-                self.current_buffer.write(data[:end_count])
-                self.message_window.put_nowait(self.current_buffer.getvalue())
-                self.current_buffer.close()
-                self.current_buffer = StringIO()
+                self._current_buffer.write(data[:end_count])
+                self._message_window.put_nowait(self._current_buffer.getvalue())
+                self._current_buffer.close()
+                self._current_buffer = StringIO()
                 # self.current_buffer.truncate(0)
                 # self.current_buffer.write(data[end_count + 1:])
 
             # `KaaJ`, `KaaJaa`, `aaKaaJaa`, `aaKaaJ`, `KaaJKaaJ`, `JaaK`, `JKaa`
             elif start_count != -1 and end_count != -1:
                 if start_count < end_count:
-                    self.current_buffer.truncate(0)
-                    self.current_buffer.write(data[start_count + 1: end_count])
-                    self.message_window.put_nowait(self.current_buffer.getvalue())
-                    self.current_buffer.close()
-                    self.current_buffer = StringIO()
+                    self._current_buffer.truncate(0)
+                    self._current_buffer.write(data[start_count + 1: end_count])
+                    self._message_window.put_nowait(self._current_buffer.getvalue())
+                    self._current_buffer.close()
+                    self._current_buffer = StringIO()
                     self.grouping_message(data[end_count + 1:])
                 else:
-                    self.current_buffer.write(data[:end_count])
-                    self.message_window.put_nowait(self.current_buffer.getvalue())
-                    self.current_buffer.close()
-                    self.current_buffer = StringIO()
+                    self._current_buffer.write(data[:end_count])
+                    self._message_window.put_nowait(self._current_buffer.getvalue())
+                    self._current_buffer.close()
+                    self._current_buffer = StringIO()
                     self.grouping_message(data[start_count + 1:])
 
     def loop_message_window(self):
         """
         遍历消息窗口
         """
-        while self.message_window.empty() is False:
-            yield self.message_window.get_nowait()
+        while self._message_window.empty() is False:
+            yield self._message_window.get_nowait()
 
     def finished(self):
         """
         是否结束读取
         """
-        return self.message_window.qsize() > 0
+        return self._message_window.qsize() > 0

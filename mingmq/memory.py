@@ -28,7 +28,7 @@ class QueueMemory:
     def __init__(self):
         self._map = dict()
 
-    def decleare_queue(self, queue_name):
+    def decleare(self, queue_name):
         """
         声明一个队列
         :param queue_name: str，队列名称
@@ -36,6 +36,29 @@ class QueueMemory:
         """
         if queue_name not in self._map:
             self._map[queue_name] = Queue()
+            return True
+        return False
+
+    def clear(self, queue_name):
+        """
+        清空一个队列
+        :param queue_name: str，队列名称
+        :return: boolean，True成功，False失败
+        """
+        if queue_name in self._map:
+            del self._map[queue_name]
+            self._map[queue_name] = Queue()
+            return True
+        return False
+
+    def delete(self, queue_name):
+        """
+        删除一个队列
+        :param queue_name: str，队列名称
+        :return: boolean，True成功，False失败
+        """
+        if queue_name in self._map:
+            del self._map[queue_name]
             return True
         return False
 
@@ -62,9 +85,9 @@ class QueueMemory:
         return None
 
 
-class QueueAckMemory:
+class TaskAckMemory:
     """
-    队列消息应答的内存模型
+    消息应答的内存模型
 
     用于存放未应答的消息id
     """
@@ -72,39 +95,57 @@ class QueueAckMemory:
     def __init__(self):
         self._map = dict()
 
-    def declare_queue(self, queue_name):
+    def declare(self, set_name):
         """
-        声明一个队列
-        :param queue_name: str，队列名
+        :param set_name: str，队列名
         :return: boolean，True成功，False失败
         """
-        if queue_name not in self._map:
-            self._map[queue_name] = set()
+        if set_name not in self._map:
+            self._map[set_name] = set()
             return True
         return False
 
-    def put(self, queue_name, message_id):
+    def clear(self, set_name):
         """
-        向指定队列中增加一条消息
-        :param queue_name: str，队列名
+        :param set_name: str，队列名
+        :return: boolean，True成功，False失败
+        """
+        if set_name in self._map:
+            del self._map[set_name]
+            self._map[set_name] = set()
+            return True
+        return False
+
+    def delete(self, set_name):
+        """
+        :param set_name: str，队列名
+        :return: boolean，True成功，False失败
+        """
+        if set_name in self._map:
+            del self._map[set_name]
+            return True
+        return False
+
+    def put(self, set_name, message_id):
+        """
+        :param set_name: str，队列名
         :param message_id: str，消息id
         :return: bookean，True成功，False失败
         """
-        if queue_name in self._map:
-            self._map[queue_name].add(message_id)
+        if set_name in self._map:
+            self._map[set_name].add(message_id)
             return True
         return False
 
-    def get(self, queue_name, message_id):
+    def get(self, set_name, message_id):
         """
-        从指定队列中获取一条消息id
-        :param queue_name: str，队列名称
+        :param set_name: str，队列名称
         :param message_id: str，消息id
         :return: str，消息id , None表示失败
         """
-        if queue_name in self._map and len(self._map[queue_name]) != 0:
+        if set_name in self._map and len(self._map[set_name]) != 0:
             try:
-                self._map[queue_name].remove(message_id)
+                self._map[set_name].remove(message_id)
                 return True
             except KeyError:
                 return False
@@ -119,7 +160,7 @@ class SyncQueueMemory:
     def __init__(self):
         self._map = dict()
 
-    def decleare_queue(self, queue_name):
+    def decleare(self, queue_name):
         """
         声明一个队列
         :param queue_name: str，队列名称
@@ -128,6 +169,31 @@ class SyncQueueMemory:
         with _LOCK:
             if queue_name not in self._map:
                 self._map[queue_name] = Queue()
+                return True
+            return False
+
+    def clear(self, queue_name):
+        """
+        清空一个队列
+        :param queue_name: str，队列名称
+        :return: boolean，True成功，False失败
+        """
+        with _LOCK:
+            if queue_name in self._map:
+                del self._map[queue_name]
+                self._map[queue_name] = Queue()
+                return True
+            return False
+
+    def delete(self, queue_name):
+        """
+        删除一个队列
+        :param queue_name: str，队列名称
+        :return: boolean，True成功，False失败
+        """
+        with _LOCK:
+            if queue_name in self._map:
+                del self._map[queue_name]
                 return True
             return False
 
@@ -156,7 +222,7 @@ class SyncQueueMemory:
             return None
 
 
-class SyncQueueAckMemory:
+class SyncTaskAckMemory:
     """
     队列消息应答的内存模型
 
@@ -166,7 +232,7 @@ class SyncQueueAckMemory:
     def __init__(self):
         self._map = dict()
 
-    def declare_queue(self, queue_name):
+    def declare(self, queue_name):
         """
         声明一个队列
         :param queue_name: str，队列名

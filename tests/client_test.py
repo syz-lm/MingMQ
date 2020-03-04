@@ -18,12 +18,12 @@ def init_cli(first=False):
     """
     客户端测试
     """
-    client = Client('localhost', 15673)
+    client = Client('192.168.1.30', 15673)
 
     if client.login('mingmq', 'mm5201314') is not True:
         sys.exit(-1)
 
-    # print('登录成功')
+    print('登录成功')
     if first:
         client.declare_queue('hello')
 
@@ -32,11 +32,10 @@ def init_cli(first=False):
 
 def send(client):
     client.send_data_to_queue('hello', HTML)
+    print('发送任务成功')
 
 
 def get(client):
-    # print('发送任务成功')
-
     message_data = client.get_data_from_queue('hello')
 
     print('获取任务成功', message_data)
@@ -48,7 +47,9 @@ def get(client):
 
 def close(client):
     client.logout('mingmq', 'mm5201314')
+    print('退出成功')
     client.close()
+    print('关闭成功')
 
 
 def main(tsn=10):
@@ -80,4 +81,4 @@ def main(tsn=10):
         close(cli)
 
 
-main(100)
+main(10)

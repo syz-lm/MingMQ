@@ -1,10 +1,39 @@
 # MingMQ
 
-这是一个消息中间件服务器，内部的网络通讯模型分别采用了epoll单线程非阻塞IO和多线程
-阻塞IO，当您在Linux下时，服务器的网络模型是单线程epoll的，而到了非Linux平台时，
-服务器的网络模型是多线程阻塞的。
+一个跨平台高性能MQ消息服务，支持和RabbitMQ服务器的大多数功能。
 
 ![](https://github.com/zswj123/MingMQ/blob/local/logo.jpg)
 
-支持和RabbitMQ服务器的大多数功能，因为我一直是RabbitMQ的使用者之一。并且我希望这
-个服务器能够用在生产环境中。我尽可能的去提供有关服务器相关的特性。
+## Hello, World!
+
+```
+client = Client('192.168.1.30', 15673)
+
+if client.login('mingmq', 'mm5201314') is not True:
+    sys.exit(-1)
+
+print('登录成功')
+client.declare_queue('hello')
+
+result = client.send_data_to_queue('hello', HTML)
+print('发送任务', result)
+
+message_data = client.get_data_from_queue('hello')
+print('获取任务成功', message_data)
+
+result = client.ack_message('hello', message_data[0]['message_id'])
+print('消息确认成功', result)
+
+result = client.delete_queue('hello')
+print('删除队列', result)
+
+result = client.logout('mingmq', 'mm5201314')
+print('注销', result)
+
+client.close()
+print('关闭成功')
+```
+
+# MORE
+
+* https://www.rabbitmq.com/

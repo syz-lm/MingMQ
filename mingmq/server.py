@@ -6,10 +6,10 @@ import socket
 
 if platform.platform().startswith('Linux'):
     import select
-    from mingmq.memory import QueueMemory, QueueAckMemory
+    from mingmq.memory import QueueMemory, TaskAckMemory
 else:
     from threading import Thread
-    from mingmq.memory import SyncQueueMemory as QueueMemory, SyncQueueAckMemory as QueueAckMemory
+    from mingmq.memory import SyncQueueMemory as QueueMemory, SyncTaskAckMemory as QueueAckMemory
 
 from mingmq.handler import Handler
 from mingmq.status import ServerStatus
@@ -20,7 +20,7 @@ class Server:
         self._server_status = server_status
 
         self._queue_memory = QueueMemory()  # 定义消息队列内存
-        self._queue_ack_memory = QueueAckMemory()  # 定义消息队列应答内存
+        self._queue_ack_memory = TaskAckMemory()  # 定义消息队列应答内存
 
         self._sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         self._sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)  # 设置IP地址复用
@@ -71,7 +71,7 @@ class Server:
             handler = self._fd_to_handler[fd]
 
             # 如果活动socket为当前服务器socket，表示有新连接
-            if handler.fileno() == self._fileno():
+            if handler == self:
                 self._new_conn_comming()
             # 关闭事件
             elif event & select.EPOLLHUP:

@@ -3,10 +3,16 @@
 import json
 import logging
 import socket
+import struct
+import platform
 
-from mingmq.memory import QueueMemory, QueueAckMemory
-from mingmq.message import (ResMessage, SUCCESS, FAIL, MESSAGE_TYPE, package_message, MessageWindow, Task)
-from mingmq.utils import hex_to_str, to_json, check_msg
+if platform.platform().startswith('Linux'):
+    from mingmq.memory import QueueMemory, TaskAckMemory
+else:
+    from mingmq.memory import SyncQueueMemory as QueueMemory, SyncTaskAckMemory as TaskAckMemory
+
+from mingmq.message import (ResMessage, SUCCESS, FAIL, MESSAGE_TYPE, Task, MAX_DATA_LENGTH)
+from mingmq.utils import to_json, check_msg
 from mingmq.status import ServerStatus
 
 
@@ -16,18 +22,22 @@ class Handler:
         sock: socket.socket,
         addr: str,
         queue_memory: QueueMemory,
-        queue_ack_memory: QueueAckMemory,
+        task_ack_memory: TaskAckMemory,
         server_status: ServerStatus
     ):
         self._sock = sock
         self._addr = addr
         self._queue_memory = queue_memory
-        self._queue_ack_memory = queue_ack_memory
+        self._task_ack_memory = task_ack_memory
         self._session_id = None
-        self._connected = False
-        self._message_window = MessageWindow()
         self._connected = True
         self.server_status = server_status
+
+        self._buf: bytes = b''
+        self._should_read = 0
+        self._read_size = 0
+
+        self._ok = False
 
     def is_connected(self):
         return self._connected
@@ -51,20 +61,33 @@ class Handler:
         return data
 
     def _handle_read(self):
-        data = self._recv(1024)
-
-        logging.info('客户端发来数据 [%s]', repr(data))
-        # 如果客户端传递消息字节的长度为0，则断开连接
-        if data is not None and len(data) > 0:
-            self._message_window.grouping_message(data.decode())
+        if self._should_read == 0:
+            try:
+                self._header = self._recv(4)
+                if self._header:
+                    self._read_size, = struct.unpack('!i', self._header)
+                    self._should_read = min(self._read_size, MAX_DATA_LENGTH)
+                    self._read_count = 0
+                else:
+                    self._connected = False
+            except:
+                self._connected = False
         else:
-            self._connected = False
+            buf = self._recv(self._should_read)
+            if buf:
+                self._buf += buf
+
+                if len(self._buf) == self._read_size:
+                    self._should_read = 0
+                    self._ok = True
+            else:
+                self._connected = False
 
     def _handle_write(self):
-        # 将data转换成json对象，如果转换失败则发送参数错误消息给客户端，并且返回False
-        for buf in self._message_window.loop_message_window():
-            logging.info('客户端[IP %s]从消息窗口中取出的消息[%s]。', repr(self._addr), buf[: 100])
-            self._deal_message(buf)
+        if self._connected and self._ok:
+            self._deal_message(self._buf)
+            self._ok = False
+            self._buf = b''
 
     def handle_epoll_mode_read(self):
         self._handle_read()
@@ -78,24 +101,11 @@ class Handler:
             self._handle_write()
 
     def _deal_message(self, buf):
-        chex = None
-        try:
-            chex = hex_to_str(buf)
-        except ValueError:
-            pass
-
-        if chex is None:
-            res_msg = ResMessage(MESSAGE_TYPE['DATA_WRONG'], FAIL, [])
-            res_pkg = package_message(json.dumps(res_msg))
-            self._send_data(res_pkg)
-            self._connected = False
-            return
-
-        msg = to_json(chex)
+        msg = to_json(buf)
 
         if msg is False:
             res_msg = ResMessage(MESSAGE_TYPE['DATA_WRONG'], FAIL, [])
-            res_pkg = package_message(json.dumps(res_msg))
+            res_pkg = json.dumps(res_msg).encode()
             self._send_data(res_pkg)
             self._connected = False
             return
@@ -139,7 +149,7 @@ class Handler:
             logging.info('%s, 参数错误 %s, 需要参数 %s', opera, msg, args)
 
             res_msg = ResMessage(MESSAGE_TYPE['DATA_WRONG'], FAIL, [])
-            res_pkg = package_message(json.dumps(res_msg))
+            res_pkg = json.dumps(res_msg).encode()
             self._send_data(res_pkg)
             return False
         return True
@@ -148,13 +158,13 @@ class Handler:
         if self._data_wrong('_ack_message', ('queue_name', 'message_id'), msg) is not False:
             queue_name = msg['queue_name']
             message_id = msg['message_id']
-            if self._queue_ack_memory.get(queue_name, message_id):
+            if self._task_ack_memory.get(queue_name, message_id):
                 res_msg = ResMessage(MESSAGE_TYPE['ACK_MESSAGE'], SUCCESS, [])
-                res_pkg = package_message(json.dumps(res_msg))
+                res_pkg = json.dumps(res_msg).encode()
                 self._send_data(res_pkg)
             else:
                 res_msg = ResMessage(MESSAGE_TYPE['ACK_MESSAGE'], FAIL, [])
-                res_pkg = package_message(json.dumps(res_msg))
+                res_pkg = json.dumps(res_msg).encode()
                 self._send_data(res_pkg)
 
     def _send_data_to_queue(self, msg):
@@ -164,11 +174,11 @@ class Handler:
             task = Task(message_data)
             if self._queue_memory.put(queue_name, task):
                 res_msg = ResMessage(MESSAGE_TYPE['SEND_DATA_TO_QUEUE'], SUCCESS, [])
-                res_pkg = package_message(json.dumps(res_msg))
+                res_pkg = json.dumps(res_msg).encode()
                 self._send_data(res_pkg)
             else:
                 res_msg = ResMessage(MESSAGE_TYPE['SEND_DATA_TO_QUEUE'], FAIL, [])
-                res_pkg = package_message(json.dumps(res_msg))
+                res_pkg = json.dumps(res_msg).encode()
                 self._send_data(res_pkg)
 
     def _get_data_from_queue(self, msg):
@@ -177,34 +187,62 @@ class Handler:
             task = self._queue_memory.get(queue_name)
             if task is not None:
                 message_id = task.message_id
-                self._queue_ack_memory.put(queue_name, message_id)
+                self._task_ack_memory.put(queue_name, message_id)
 
                 res_msg = ResMessage(MESSAGE_TYPE['GET_DATA_FROM_QUEUE'], SUCCESS, [task])
-                res_pkg = package_message(json.dumps(res_msg))
+                res_pkg = json.dumps(res_msg).encode()
                 self._send_data(res_pkg)
             else:
                 res_msg = ResMessage(MESSAGE_TYPE['GET_DATA_FROM_QUEUE'], FAIL, [task])
-                res_pkg = package_message(json.dumps(res_msg))
+                res_pkg = json.dumps(res_msg).encode()
                 self._send_data(res_pkg)
 
     def _declare_queue(self, msg):
         if self._data_wrong('_declare_queue', ('queue_name',), msg) is not False:
             queue_name = msg['queue_name']
-            if self._queue_memory.decleare_queue(queue_name):
-                self._queue_ack_memory.declare_queue(queue_name)
+            if self._queue_memory.decleare(queue_name):
+                self._task_ack_memory.declare(queue_name)
 
                 res_msg = ResMessage(MESSAGE_TYPE['DECLARE_QUEUE'], SUCCESS, [])
-                res_pkg = package_message(json.dumps(res_msg))
+                res_pkg = json.dumps(res_msg).encode()
                 self._send_data(res_pkg)
             else:
                 res_msg = ResMessage(MESSAGE_TYPE['DECLARE_QUEUE'], FAIL, [])
-                res_pkg = package_message(json.dumps(res_msg))
+                res_pkg = json.dumps(res_msg).encode()
                 self._send_data(res_pkg)
 
     def _not_found(self, msg):
         res_msg = ResMessage(MESSAGE_TYPE['NOT_FOUND'], FAIL, [msg])
-        res_pkg = package_message(json.dumps(res_msg))
+        res_pkg = json.dumps(res_msg).encode()
         self._send_data(res_pkg)
+
+    def _delete_queue(self, msg):
+        if self._data_wrong('_declare_queue', ('queue_name',), msg) is not False:
+            queue_name = msg['queue_name']
+            if self._queue_memory.delete(queue_name):
+                self._task_ack_memory.delete(queue_name)
+
+                res_msg = ResMessage(MESSAGE_TYPE['DECLARE_QUEUE'], SUCCESS, [])
+                res_pkg = json.dumps(res_msg).encode()
+                self._send_data(res_pkg)
+            else:
+                res_msg = ResMessage(MESSAGE_TYPE['DECLARE_QUEUE'], FAIL, [])
+                res_pkg = json.dumps(res_msg).encode()
+                self._send_data(res_pkg)
+
+    def _clear_queue(self, msg):
+        if self._data_wrong('_clear_queue', ('queue_name',), msg) is not False:
+            queue_name = msg['queue_name']
+            if self._queue_memory.clear(queue_name):
+                self._task_ack_memory.clear(queue_name)
+
+                res_msg = ResMessage(MESSAGE_TYPE['DECLARE_QUEUE'], SUCCESS, [])
+                res_pkg = json.dumps(res_msg).encode()
+                self._send_data(res_pkg)
+            else:
+                res_msg = ResMessage(MESSAGE_TYPE['DECLARE_QUEUE'], FAIL, [])
+                res_pkg = json.dumps(res_msg).encode()
+                self._send_data(res_pkg)
 
     def _login(self, msg):
         if self._data_wrong('_login', ('user_name', 'passwd'), msg) is not False:
@@ -214,13 +252,13 @@ class Handler:
             if self.server_status.get_user_name() != user_name or \
                     self.server_status.get_passwd() != passwd:
                 res_msg = ResMessage(MESSAGE_TYPE['LOGIN'], FAIL, [])
-                res_pkg = package_message(json.dumps(res_msg))
+                res_pkg = json.dumps(res_msg).encode()
                 self._send_data(res_pkg)
                 self._connected = False
             else:
                 self._session_id = str(self) + ':' + repr(self._addr) + ':' + user_name + '/' + passwd
                 res_msg = ResMessage(MESSAGE_TYPE['LOGIN'], SUCCESS, [])
-                self._send_data(package_message(json.dumps(res_msg)))
+                self._send_data(json.dumps(res_msg).encode())
         else:
             self._connected = False
 
@@ -232,16 +270,19 @@ class Handler:
             if self.server_status.get_user_name() != user_name or \
                     self.server_status.get_passwd() != passwd:
                 res_msg = ResMessage(MESSAGE_TYPE['LOGOUT'], FAIL, [])
-                res_pkg = package_message(json.dumps(res_msg))
+                res_pkg = json.dumps(res_msg).encode()
                 self._send_data(res_pkg)
             else:
                 res_msg = ResMessage(MESSAGE_TYPE['LOGOUT'], SUCCESS, [])
-                self._send_data(package_message(json.dumps(res_msg)))
+                self._send_data(json.dumps(res_msg).encode())
 
                 self._connected = False
 
     def _send_data(self, data):
-        if self._connected: self._sock.send(data)
+        if self._connected:
+            header = struct.pack('!i', len(data))
+            logging.info('发送给客户端[%s]的消息为: %s', self._addr, header + data)
+            self._sock.sendall(header + data)
 
     def _has_loggin(self):
         if self._session_id is not None: return True
