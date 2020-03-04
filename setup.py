@@ -2,7 +2,7 @@ from setuptools import find_packages, setup
 
 setup(
     name='mingmq',
-    version='1.0.1',
+    version='1.0.3',
     url='https://github.com/zswj123/mingmq',
     license='',
     maintainer='zswj123',
