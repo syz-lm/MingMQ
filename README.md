@@ -4,8 +4,31 @@
 
 ![](https://github.com/zswj123/MingMQ/blob/local/logo.jpg)
 
-## Hello, World!
+## Server
 
+```
+$ mmserver --help
+usage: 欢迎使用MingMQ消息队列服务器！
+ [-h] [--HOST HOST] [--PORT PORT] [--MAX_CONN MAX_CONN] [--USER_NAME USER_NAME] [--PASSWD PASSWD] [--TIMEOUT TIMEOUT]
+
+optional arguments:
+  -h, --help            show this help message and exit
+  --HOST HOST           输入服务器IP地址：: 默认，0.0.0.0
+  --PORT PORT           输入服务器端口：默认，15673
+  --MAX_CONN MAX_CONN   输入服务器的最大并发数，默认，100
+  --USER_NAME USER_NAME
+                        输入服务器账号，默认，mingmq
+  --PASSWD PASSWD       输入服务器密码，默认，mm5201314
+  --TIMEOUT TIMEOUT     输入服务器超时时间（仅linux下有效），默认，10
+
+$ mmserver
+正在启动，服务器的配置为
+IP/端口:0.0.0.0:15673, 用户名/密码:mingmq/mm5201314，最大连接数:100，超时时间: 10
+
+```
+
+## Client
+### Hello, World!
 ```
 client = Client('192.168.1.30', 15673)
 
