@@ -23,7 +23,7 @@ def main():
 
     flags = parser.parse_args()
 
-    print('正在启动，服务器的配置为\nIP/端口:%s:%d, 用户名/密码:%s/%s，最大连接数:%d，超时时间: %d' %
+    print('正在启动，服务器的配置为\nIP/端口:%s:%d, 用户名/密码:%s/%s，最大并发数:%d，超时时间: %d' %
           (flags.HOST, flags.PORT, flags.USER_NAME, flags.PASSWD,
            flags.MAX_CONN, flags.TIMEOUT))
 
