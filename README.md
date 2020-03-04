@@ -33,6 +33,7 @@ IP/端口:0.0.0.0:15673, 用户名/密码:mingmq/mm5201314，最大连接数:100
 client = Client('192.168.1.30', 15673)
 
 if client.login('mingmq', 'mm5201314') is not True:
+    print('登录失败')
     sys.exit(-1)
 
 print('登录成功')
@@ -42,10 +43,10 @@ result = client.send_data_to_queue('hello', HTML)
 print('发送任务', result)
 
 message_data = client.get_data_from_queue('hello')
-print('获取任务成功', message_data)
+print('获取任务', message_data)
 
 result = client.ack_message('hello', message_data[0]['message_id'])
-print('消息确认成功', result)
+print('消息确认', result)
 
 result = client.delete_queue('hello')
 print('删除队列', result)
