@@ -30,6 +30,8 @@ IP/端口:0.0.0.0:15673, 用户名/密码:mingmq/mm5201314，最大连接数:100
 ## Client
 ### Hello, World!
 ```
+from mingmq import client
+
 client = Client('192.168.1.30', 15673)
 
 if client.login('mingmq', 'mm5201314') is not True:
