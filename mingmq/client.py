@@ -15,6 +15,10 @@ from mingmq.message import (ReqLoginMessage, MessageWindow,
                             ReqGetSpeedMessage, ReqGetStatMessage)
 from mingmq.utils import to_json
 
+from threading import Lock
+
+_LOCK = Lock()
+
 
 class Client:
     """
@@ -69,333 +73,343 @@ class Client:
         :param passwd: str，密码
         :return: boolean，True登录成功，False登录失败
         """
-        # 发送数据
-        req_login_msg = ReqLoginMessage(user_name, passwd)
-        req_pkg = json.dumps(req_login_msg).encode()
-        send_header = struct.pack('!i', len(req_pkg))
-        self._send(send_header + req_pkg)
+        with _LOCK:
+            # 发送数据
+            req_login_msg = ReqLoginMessage(user_name, passwd)
+            req_pkg = json.dumps(req_login_msg).encode()
+            send_header = struct.pack('!i', len(req_pkg))
+            self._send(send_header + req_pkg)
 
-        # 接收数据
-        recv_header = self._recv(4)
-        if recv_header:
-            data_size, = struct.unpack('!i', recv_header)
+            # 接收数据
+            recv_header = self._recv(4)
+            if recv_header:
+                data_size, = struct.unpack('!i', recv_header)
 
-            should_read = min(data_size, MAX_DATA_LENGTH)
+                should_read = min(data_size, MAX_DATA_LENGTH)
 
-            data = b''
-            while self._connected and len(data) < data_size:
-                buf = self._recv(should_read)
-                if buf:
-                    data += buf
-                    if len(data) == data_size:
-                        msg = to_json(data)
-                        logging.info('服务器发送过来的消息[%s]。', repr(msg))
-                        if msg['status'] == SUCCESS:
-                            self._user_name = user_name
-                            self._passwd = passwd
-                        return msg
-                else:
-                    self._connected = False
-                    self.close()
-        else:
-            self._connected = False
-            self.close()
+                data = b''
+                while self._connected and len(data) < data_size:
+                    buf = self._recv(should_read)
+                    if buf:
+                        data += buf
+                        if len(data) == data_size:
+                            msg = to_json(data)
+                            logging.info('服务器发送过来的消息[%s]。', repr(msg))
+                            if msg['status'] == SUCCESS:
+                                self._user_name = user_name
+                                self._passwd = passwd
+                            return msg
+                    else:
+                        self._connected = False
+                        self.close()
+            else:
+                self._connected = False
+                self.close()
 
     def logout(self, user_name, passwd):
         """
         退出
         """
-        req_logout_msg = ReqLogoutMessage(user_name, passwd)
-        req_pkg = json.dumps(req_logout_msg).encode()
-        send_header = struct.pack('!i', len(req_pkg))
-        self._send(send_header + req_pkg)
+        with _LOCK:
+            req_logout_msg = ReqLogoutMessage(user_name, passwd)
+            req_pkg = json.dumps(req_logout_msg).encode()
+            send_header = struct.pack('!i', len(req_pkg))
+            self._send(send_header + req_pkg)
 
-        # 接收数据
-        recv_header = self._recv(4)
-        if recv_header:
-            data_size, = struct.unpack('!i', recv_header)
+            # 接收数据
+            recv_header = self._recv(4)
+            if recv_header:
+                data_size, = struct.unpack('!i', recv_header)
 
-            should_read = min(data_size, MAX_DATA_LENGTH)
-            data = b''
-            while self._connected and len(data) < data_size:
-                buf = self._recv(should_read)
-                if buf:
-                    data += buf
-                    if len(data) >= data_size:
-                        msg = to_json(data)
-                        logging.info('服务器发送过来的消息[%s]。', repr(msg))
-                        return msg
-                else:
-                    self._connected = False
-                    self.close()
-                    return False
-        else:
-            self._connected = False
-            self.close()
-            return False
+                should_read = min(data_size, MAX_DATA_LENGTH)
+                data = b''
+                while self._connected and len(data) < data_size:
+                    buf = self._recv(should_read)
+                    if buf:
+                        data += buf
+                        if len(data) >= data_size:
+                            msg = to_json(data)
+                            logging.info('服务器发送过来的消息[%s]。', repr(msg))
+                            return msg
+                    else:
+                        self._connected = False
+                        self.close()
+                        return False
+            else:
+                self._connected = False
+                self.close()
+                return False
 
     def declare_queue(self, queue_name):
         """
         声明队列
         """
-        req_declare_queue_msg = ReqDeclareQueueMessage(queue_name)
-        req_pkg = json.dumps(req_declare_queue_msg).encode()
-        send_header = struct.pack('!i', len(req_pkg))
-        self._send(send_header + req_pkg)
+        with _LOCK:
+            req_declare_queue_msg = ReqDeclareQueueMessage(queue_name)
+            req_pkg = json.dumps(req_declare_queue_msg).encode()
+            send_header = struct.pack('!i', len(req_pkg))
+            self._send(send_header + req_pkg)
 
-        # 接收数据
-        recv_header = self._recv(4)
-        if recv_header:
-            data_size, = struct.unpack('!i', recv_header)
+            # 接收数据
+            recv_header = self._recv(4)
+            if recv_header:
+                data_size, = struct.unpack('!i', recv_header)
 
-            should_read = min(data_size, MAX_DATA_LENGTH)
-            data = b''
-            while self._connected and len(data) < data_size:
-                buf = self._recv(should_read)
-                if buf:
-                    data += buf
-                    if len(data) >= data_size:
-                        msg = to_json(data)
-                        logging.info('服务器发送过来的消息[%s]。', repr(msg))
-                        return msg
-                else:
-                    self._connected = False
-                    self.close()
-                    return False
-        else:
-            self._connected = False
-            self.close()
-            return False
+                should_read = min(data_size, MAX_DATA_LENGTH)
+                data = b''
+                while self._connected and len(data) < data_size:
+                    buf = self._recv(should_read)
+                    if buf:
+                        data += buf
+                        if len(data) >= data_size:
+                            msg = to_json(data)
+                            logging.info('服务器发送过来的消息[%s]。', repr(msg))
+                            return msg
+                    else:
+                        self._connected = False
+                        self.close()
+                        return False
+            else:
+                self._connected = False
+                self.close()
+                return False
 
     def get_data_from_queue(self, queue_name):
         """
         从队列中获取数据
         """
-        req_get_data_from_queue_msg = ReqGetDataFromQueueMessage(queue_name)
-        req_pkg = json.dumps(req_get_data_from_queue_msg).encode()
-        send_header = struct.pack('!i', len(req_pkg))
-        self._send(send_header + req_pkg)
+        with _LOCK:
+            req_get_data_from_queue_msg = ReqGetDataFromQueueMessage(queue_name)
+            req_pkg = json.dumps(req_get_data_from_queue_msg).encode()
+            send_header = struct.pack('!i', len(req_pkg))
+            self._send(send_header + req_pkg)
 
-        # 接收数据
-        recv_header = self._recv(4)
-        if recv_header:
-            data_size, = struct.unpack('!i', recv_header)
+            # 接收数据
+            recv_header = self._recv(4)
+            if recv_header:
+                data_size, = struct.unpack('!i', recv_header)
 
-            should_read = min(data_size, MAX_DATA_LENGTH)
-            data = b''
-            while self._connected and len(data) < data_size:
-                buf = self._recv(should_read)
-                if buf:
-                    data += buf
+                should_read = min(data_size, MAX_DATA_LENGTH)
+                data = b''
+                while self._connected and len(data) < data_size:
+                    buf = self._recv(should_read)
+                    if buf:
+                        data += buf
 
-                    if len(data) == data_size:
-                        msg = to_json(data)
-                        logging.info('服务器发送过来的消息[%s]。', repr(msg))
-                        return msg
-                else:
-                    self._connected = False
-                    self.close()
-                    return False
-        else:
-            self._connected = False
-            self.close()
-            return False
+                        if len(data) == data_size:
+                            msg = to_json(data)
+                            logging.info('服务器发送过来的消息[%s]。', repr(msg))
+                            return msg
+                    else:
+                        self._connected = False
+                        self.close()
+                        return False
+            else:
+                self._connected = False
+                self.close()
+                return False
 
     def send_data_to_queue(self, queue_name, message_data):
         """
         向队列中发送数据
         """
-        rsdfqm = ReqSendDataToQueueMessage(queue_name, message_data)
-        req_pkg = json.dumps(rsdfqm).encode()
-        send_header = struct.pack('!i', len(req_pkg))
-        self._send(send_header + req_pkg)
+        with _LOCK:
+            rsdfqm = ReqSendDataToQueueMessage(queue_name, message_data)
+            req_pkg = json.dumps(rsdfqm).encode()
+            send_header = struct.pack('!i', len(req_pkg))
+            self._send(send_header + req_pkg)
 
-        # 接收数据
-        recv_header = self._recv(4)
-        if recv_header:
-            data_size, = struct.unpack('!i', recv_header)
+            # 接收数据
+            recv_header = self._recv(4)
+            if recv_header:
+                data_size, = struct.unpack('!i', recv_header)
 
-            should_read = min(data_size, MAX_DATA_LENGTH)
-            data = b''
-            while self._connected and len(data) < data_size:
-                buf = self._recv(should_read)
-                if buf:
-                    data += buf
+                should_read = min(data_size, MAX_DATA_LENGTH)
+                data = b''
+                while self._connected and len(data) < data_size:
+                    buf = self._recv(should_read)
+                    if buf:
+                        data += buf
 
-                    if len(data) == data_size:
-                        msg = to_json(data)
-                        logging.info('服务器发送过来的消息[%s]。', repr(msg))
-                        return msg
-                else:
-                    self._connected = False
-                    self.close()
-                    return False
-        else:
-            self._connected = False
-            self.close()
-            return False
+                        if len(data) == data_size:
+                            msg = to_json(data)
+                            logging.info('服务器发送过来的消息[%s]。', repr(msg))
+                            return msg
+                    else:
+                        self._connected = False
+                        self.close()
+                        return False
+            else:
+                self._connected = False
+                self.close()
+                return False
 
     def ack_message(self, queue_name, message_id):
         """
         消息确认
         """
-        req_ack_msg = ReqACKMessage(queue_name, message_id)
-        req_pkg = json.dumps(req_ack_msg).encode()
-        send_header = struct.pack('!i', len(req_pkg))
-        self._send(send_header + req_pkg)
+        with _LOCK:
+            req_ack_msg = ReqACKMessage(queue_name, message_id)
+            req_pkg = json.dumps(req_ack_msg).encode()
+            send_header = struct.pack('!i', len(req_pkg))
+            self._send(send_header + req_pkg)
 
-        # 接收数据
-        recv_header = self._recv(4)
-        if recv_header:
-            data_size, = struct.unpack('!i', recv_header)
+            # 接收数据
+            recv_header = self._recv(4)
+            if recv_header:
+                data_size, = struct.unpack('!i', recv_header)
 
-            should_read = min(data_size, MAX_DATA_LENGTH)
-            data = b''
-            while self._connected and len(data) < data_size:
-                buf = self._recv(should_read)
-                if buf:
-                    data += buf
-                    if len(data) >= data_size:
-                        msg = to_json(buf)
-                        logging.info('服务器发送过来的消息[%s]。', repr(msg))
-                        return msg
-                else:
-                    self._connected = False
-                    self.close()
-                    return False
-        else:
-            self._connected = False
-            self.close()
-            return False
+                should_read = min(data_size, MAX_DATA_LENGTH)
+                data = b''
+                while self._connected and len(data) < data_size:
+                    buf = self._recv(should_read)
+                    if buf:
+                        data += buf
+                        if len(data) >= data_size:
+                            msg = to_json(buf)
+                            logging.info('服务器发送过来的消息[%s]。', repr(msg))
+                            return msg
+                    else:
+                        self._connected = False
+                        self.close()
+                        return False
+            else:
+                self._connected = False
+                self.close()
+                return False
 
     def del_queue(self, queue_name):
         """
         删除队列
         """
-        req_ack_msg = ReqDeleteQueueMessage(queue_name)
-        req_pkg = json.dumps(req_ack_msg).encode()
-        send_header = struct.pack('!i', len(req_pkg))
-        self._send(send_header + req_pkg)
+        with _LOCK:
+            req_ack_msg = ReqDeleteQueueMessage(queue_name)
+            req_pkg = json.dumps(req_ack_msg).encode()
+            send_header = struct.pack('!i', len(req_pkg))
+            self._send(send_header + req_pkg)
 
-        # 接收数据
-        recv_header = self._recv(4)
-        if recv_header:
-            data_size, = struct.unpack('!i', recv_header)
+            # 接收数据
+            recv_header = self._recv(4)
+            if recv_header:
+                data_size, = struct.unpack('!i', recv_header)
 
-            should_read = min(data_size, MAX_DATA_LENGTH)
-            data = b''
-            while self._connected and len(data) < data_size:
-                buf = self._recv(should_read)
-                if buf:
-                    data += buf
-                    if len(data) >= data_size:
-                        msg = to_json(buf)
-                        logging.info('服务器发送过来的消息[%s]。', repr(msg))
-                        return msg
-                else:
-                    self._connected = False
-                    self.close()
-                    return False
-        else:
-            self._connected = False
-            self.close()
-            return False
+                should_read = min(data_size, MAX_DATA_LENGTH)
+                data = b''
+                while self._connected and len(data) < data_size:
+                    buf = self._recv(should_read)
+                    if buf:
+                        data += buf
+                        if len(data) >= data_size:
+                            msg = to_json(buf)
+                            logging.info('服务器发送过来的消息[%s]。', repr(msg))
+                            return msg
+                    else:
+                        self._connected = False
+                        self.close()
+                        return False
+            else:
+                self._connected = False
+                self.close()
+                return False
 
     def clear_queue(self, queue_name):
         """
         清空队列
         """
-        req_ack_msg = ReqClearQueueMessage(queue_name)
-        req_pkg = json.dumps(req_ack_msg).encode()
-        send_header = struct.pack('!i', len(req_pkg))
-        self._send(send_header + req_pkg)
+        with _LOCK:
+            req_ack_msg = ReqClearQueueMessage(queue_name)
+            req_pkg = json.dumps(req_ack_msg).encode()
+            send_header = struct.pack('!i', len(req_pkg))
+            self._send(send_header + req_pkg)
 
-        # 接收数据
-        recv_header = self._recv(4)
-        if recv_header:
-            data_size, = struct.unpack('!i', recv_header)
+            # 接收数据
+            recv_header = self._recv(4)
+            if recv_header:
+                data_size, = struct.unpack('!i', recv_header)
 
-            should_read = min(data_size, MAX_DATA_LENGTH)
-            data = b''
-            while self._connected and len(data) < data_size:
-                buf = self._recv(should_read)
-                if buf:
-                    data += buf
-                    if len(data) >= data_size:
-                        msg = to_json(buf)
-                        logging.info('服务器发送过来的消息[%s]。', repr(msg))
-                        return msg
-                else:
-                    self._connected = False
-                    self.close()
-                    return False
-        else:
-            self._connected = False
-            self.close()
-            return False
+                should_read = min(data_size, MAX_DATA_LENGTH)
+                data = b''
+                while self._connected and len(data) < data_size:
+                    buf = self._recv(should_read)
+                    if buf:
+                        data += buf
+                        if len(data) >= data_size:
+                            msg = to_json(buf)
+                            logging.info('服务器发送过来的消息[%s]。', repr(msg))
+                            return msg
+                    else:
+                        self._connected = False
+                        self.close()
+                        return False
+            else:
+                self._connected = False
+                self.close()
+                return False
 
     def get_speed(self, queue_name):
         """
         获取队列速度
         """
-        req_ack_msg = ReqGetSpeedMessage(queue_name)
-        req_pkg = json.dumps(req_ack_msg).encode()
-        send_header = struct.pack('!i', len(req_pkg))
-        self._send(send_header + req_pkg)
+        with _LOCK:
+            req_ack_msg = ReqGetSpeedMessage(queue_name)
+            req_pkg = json.dumps(req_ack_msg).encode()
+            send_header = struct.pack('!i', len(req_pkg))
+            self._send(send_header + req_pkg)
 
-        # 接收数据
-        recv_header = self._recv(4)
-        if recv_header:
-            data_size, = struct.unpack('!i', recv_header)
+            # 接收数据
+            recv_header = self._recv(4)
+            if recv_header:
+                data_size, = struct.unpack('!i', recv_header)
 
-            should_read = min(data_size, MAX_DATA_LENGTH)
-            data = b''
-            while self._connected and len(data) < data_size:
-                buf = self._recv(should_read)
-                if buf:
-                    data += buf
-                    if len(data) >= data_size:
-                        msg = to_json(buf)
-                        logging.info('服务器发送过来的消息[%s]。', repr(msg))
-                        return msg
-                else:
-                    self._connected = False
-                    self.close()
-                    return False
-        else:
-            self._connected = False
-            self.close()
-            return False
+                should_read = min(data_size, MAX_DATA_LENGTH)
+                data = b''
+                while self._connected and len(data) < data_size:
+                    buf = self._recv(should_read)
+                    if buf:
+                        data += buf
+                        if len(data) >= data_size:
+                            msg = to_json(buf)
+                            logging.info('服务器发送过来的消息[%s]。', repr(msg))
+                            return msg
+                    else:
+                        self._connected = False
+                        self.close()
+                        return False
+            else:
+                self._connected = False
+                self.close()
+                return False
 
     def get_stat(self):
         """
         获取统计数据
         """
-        req_get_stat_msg = ReqGetStatMessage()
-        req_pkg = json.dumps(req_get_stat_msg).encode()
-        send_header = struct.pack('!i', len(req_pkg))
-        self._send(send_header + req_pkg)
+        with _LOCK:
+            req_get_stat_msg = ReqGetStatMessage()
+            req_pkg = json.dumps(req_get_stat_msg).encode()
+            send_header = struct.pack('!i', len(req_pkg))
+            self._send(send_header + req_pkg)
 
-        # 接收数据
-        recv_header = self._recv(4)
-        if recv_header:
-            data_size, = struct.unpack('!i', recv_header)
+            # 接收数据
+            recv_header = self._recv(4)
+            if recv_header:
+                data_size, = struct.unpack('!i', recv_header)
 
-            should_read = min(data_size, MAX_DATA_LENGTH)
-            data = b''
-            while self._connected and len(data) < data_size:
-                buf = self._recv(should_read)
-                if buf:
-                    data += buf
-                    if len(data) >= data_size:
-                        msg = to_json(buf)
-                        logging.info('服务器发送过来的消息[%s]。', repr(msg))
-                        return msg
-                else:
-                    self._connected = False
-                    self.close()
-                    return False
-        else:
-            self._connected = False
-            self.close()
-            return False
+                should_read = min(data_size, MAX_DATA_LENGTH)
+                data = b''
+                while self._connected and len(data) < data_size:
+                    buf = self._recv(should_read)
+                    if buf:
+                        data += buf
+                        if len(data) >= data_size:
+                            msg = to_json(buf)
+                            logging.info('服务器发送过来的消息[%s]。', repr(msg))
+                            return msg
+                    else:
+                        self._connected = False
+                        self.close()
+                        return False
+            else:
+                self._connected = False
+                self.close()
+                return False
