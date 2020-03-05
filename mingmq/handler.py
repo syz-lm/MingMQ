@@ -155,7 +155,8 @@ class Handler:
     def _get_stat(self):
         res_msg = ResMessage(MESSAGE_TYPE['GET_SPEED'], SUCCESS, [{
             'queue_infor': self._queue_memory.get_stat(),
-            'speed_infor': self._stat_memory.get_stat()
+            'speed_infor': self._stat_memory.get_stat(),
+            'task_ack_infor': self._task_ack_memory.get_stat()
         }])
         res_pkg = json.dumps(res_msg).encode()
         self._send_data(res_pkg)
@@ -234,8 +235,9 @@ class Handler:
             if self._data_wrong('_get_data_from_queue', ('queue_name',), msg) is not False:
                 queue_name = msg['queue_name']
                 task = self._queue_memory.get(queue_name)
+                # 这里知不知道需要优化一下啊，因为内存翻倍了啊！
                 if task is not None and \
-                        self._task_ack_memory.put(queue_name, task.message_id):
+                        self._task_ack_memory.put(queue_name, task.message_id, task.message_data):
                     res_msg = ResMessage(MESSAGE_TYPE['GET_DATA_FROM_QUEUE'], SUCCESS, [task])
                     res_pkg = json.dumps(res_msg).encode()
                     self._send_data(res_pkg)

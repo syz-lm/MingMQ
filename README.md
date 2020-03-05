@@ -37,7 +37,7 @@ IP/端口:0.0.0.0:15673, 用户名/密码:mingmq/mm5201314，最大并发数:100
 $ mmweb
 ```
 
-![](https://github.com/zswj123/MingMQ/blob/local/web_console.png)
+![](https://github.com/zswj123/MingMQ/blob/master/web_console.png)
 
 默认端口15674。
 
@@ -79,6 +79,8 @@ print('关闭成功')
 * 需要开发一些测试，并生成测试数据图片，用以在readme页面进行展示，用来吸引更多的用户；
 * readme需要再修改一下；
 * 需要编写一定的rst文档，编写之前需要去询问一下tornado或者借鉴一下他们rst文档是怎么快速生成的方法；
+* 一段时间没有ack，系统要自动重新推送，问题是该如何推送呢？系统中好像没有保存任务数据，只保存了任务的message_id；
+* 要不要开发一个ack的功能，根据指定队列，指定的message_id进行ack；
 
 ## More
 

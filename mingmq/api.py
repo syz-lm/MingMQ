@@ -103,6 +103,14 @@ def clear():
     return CLINET.clear_queue(queue_name)
 
 
+@APP.route('/ack', methods=['POST'])
+@AUTH.login_required
+def ack():
+    queue_name = request.form['queue_name']
+    message_id = request.form['message_id']
+    return CLINET.ack_message(queue_name, message_id)
+
+
 @APP.route('/get_speed')
 @AUTH.login_required
 def get_speed():

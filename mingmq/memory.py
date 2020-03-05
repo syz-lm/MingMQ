@@ -110,7 +110,7 @@ class TaskAckMemory:
         :return: boolean，True成功，False失败
         """
         if set_name not in self._map:
-            self._map[set_name] = set()
+            self._map[set_name] = dict()
             return True
         return False
 
@@ -121,7 +121,7 @@ class TaskAckMemory:
         """
         if set_name in self._map:
             del self._map[set_name]
-            self._map[set_name] = set()
+            self._map[set_name] = dict()
             return True
         return False
 
@@ -135,27 +135,29 @@ class TaskAckMemory:
             return True
         return False
 
-    def put(self, set_name, message_id):
+    def put(self, queue_name, message_id, message_data):
         """
-        :param set_name: str，队列名
+        :param queue_name: str，队列名
         :param message_id: str，消息id
+        :param message_data: 消息
         :return: bookean，True成功，False失败
         """
-        if set_name in self._map:
-            self._map[set_name].add(message_id)
+        if queue_name in self._map:
+            self._map[queue_name][message_id] = message_data
             return True
         return False
 
-    def get(self, set_name, message_id):
+    def get(self, queue_name, message_id):
         """
-        :param set_name: str，队列名称
+        :param queue_name: str，队列名称
         :param message_id: str，消息id
-        :return: str，消息id , None表示失败
+        :return: str，消息数据 , False表示失败
         """
-        if set_name in self._map and len(self._map[set_name]) != 0:
+        if queue_name in self._map and len(self._map[queue_name]) != 0:
             try:
-                self._map[set_name].remove(message_id)
-                return True
+                message_data = self._map[queue_name][message_id]
+                del self._map[queue_name][message_id]
+                return message_data
             except KeyError:
                 return False
         return False
@@ -263,20 +265,21 @@ class SyncTaskAckMemory:
         """
         with _LOCK:
             if queue_name not in self._map:
-                self._map[queue_name] = set()
+                self._map[queue_name] = dict()
                 return True
             return False
 
-    def put(self, queue_name, message_id):
+    def put(self, queue_name, message_id, message_data):
         """
         向指定队列中增加一条消息
         :param queue_name: str，队列名
         :param message_id: str，消息id
-        :return: bookean，True成功，False失败
+        :param message_data: str，消息数据
+        :return: boolean，True成功，False失败
         """
         with _LOCK:
             if queue_name in self._map:
-                self._map[queue_name].add(message_id)
+                self._map[queue_name][message_id] = message_data
                 return True
             return False
 
@@ -285,33 +288,32 @@ class SyncTaskAckMemory:
         从指定队列中获取一条消息id
         :param queue_name: str，队列名称
         :param message_id: str，消息id
-        :return: str，消息id , None表示失败
+        :return: any，消息id , False表示失败
         """
         with _LOCK:
             if queue_name in self._map and len(self._map[queue_name]) != 0:
                 try:
-                    self._map[queue_name].remove(message_id)
-                    return True
+                    message_data = self._map[queue_name][message_id]
+                    del self._map[queue_name][message_id]
+                    return message_data
                 except KeyError:
                     return False
             return False
 
     def clear(self, queue_name):
         """
-        清空一个队列
         :param queue_name: str，队列名称
         :return: boolean，True成功，False失败
         """
         with _LOCK:
             if queue_name in self._map:
                 del self._map[queue_name]
-                self._map[queue_name] = set()
+                self._map[queue_name] = dict()
                 return True
             return False
 
     def delete(self, queue_name):
         """
-        删除一个队列
         :param queue_name: str，队列名称
         :return: boolean，True成功，False失败
         """

@@ -13,18 +13,19 @@ button {
     border: solid 1px;
     font-size: 13px;
     height: 20px;
+    cursor: pointer;
 }
 
 table > tr > th, table > tr > td {
     color: green;
-    width: 102.5px;
+    /*width: 95px;*/
     text-align: center;
     height: 22px;
 }
 
 
 .header, .content, .footer {
-    width: 960px;
+    width: 1080px;
     height: auto;
     margin: 0 auto;
     box-sizing: border-box;
@@ -52,10 +53,13 @@ table > tr > th, table > tr > td {
     float: right;
     font-size: 30px;
     height: 40px;
+    margin-right: 2px;
 }
 
 .create_queue {
     float: right;
+    margin-right: 3px;
+    margin-bottom: 5px;
 }
 
 audio {
