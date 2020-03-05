@@ -9,7 +9,8 @@ if platform.platform().startswith('Linux'):
     from mingmq.memory import QueueMemory, TaskAckMemory
 else:
     from threading import Thread
-    from mingmq.memory import SyncQueueMemory as QueueMemory, SyncTaskAckMemory as TaskAckMemory
+    from mingmq.memory import SyncQueueMemory as QueueMemory
+    from mingmq.memory import SyncTaskAckMemory as TaskAckMemory
 
 from mingmq.memory import StatMemory
 

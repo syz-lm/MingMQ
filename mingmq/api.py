@@ -17,9 +17,9 @@ with open('/tmp/mingmq', 'r') as f:
     tmp = f.read()
     USER_NAME, PASSWD, PORT = tmp.split('\n')
 
-CLIENT = Client('localhost', int(PORT))
+CLINET = Client('localhost', int(PORT))
 
-CLIENT.login(USER_NAME, PASSWD)
+CLINET.login(USER_NAME, PASSWD)
 
 USERS = [{
     'user_name': USER_NAME,
@@ -65,54 +65,53 @@ def logout():
 @AUTH.login_required
 def declare():
     queue_name = request.args.get('queue_name')
-    return CLIENT.declare_queue(queue_name)
+    return CLINET.declare_queue(queue_name)
 
 
 @APP.route('/delete')
 @AUTH.login_required
 def delete():
     queue_name = request.args.get('queue_name')
-    return CLIENT.del_queue(queue_name)
+    return CLINET.del_queue(queue_name)
 
 
 @APP.route('/get')
 @AUTH.login_required
 def get():
     queue_name = request.args.get('queue_name')
-    return CLIENT.get_data_from_queue(queue_name)
+    return CLINET.get_data_from_queue(queue_name)
 
 
-@APP.route('/put')
+@APP.route('/put', methods=['POST'])
 @AUTH.login_required
 def put():
-    queue_name = request.args.get('queue_name')
-    data = request.args.get('data')
-    return CLIENT.send_data_to_queue(queue_name, data)
+    queue_name = request.form['queue_name']
+    message = request.form['message']
+    return CLINET.send_data_to_queue(queue_name, message)
 
 
 @APP.route('/get_all')
 @AUTH.login_required
 def get_all():
-    data = request.args.get('data')
-    return CLIENT.get_stat()
+    return CLINET.get_stat()
 
 
 @APP.route('/clear')
 @AUTH.login_required
 def clear():
     queue_name = request.args.get('queue_name')
-    return CLIENT.clear_queue(queue_name)
+    return CLINET.clear_queue(queue_name)
 
 
 @APP.route('/get_speed')
 @AUTH.login_required
 def get_speed():
     queue_name = request.args.get('queue_name')
-    return CLIENT.get_speed(queue_name)
+    return CLINET.get_speed(queue_name)
 
 
 def main():
     try:
         APP.run(host='0.0.0.0', port=15674)
     finally:
-        CLIENT.close()
+        CLINET.close()

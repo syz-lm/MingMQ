@@ -93,6 +93,7 @@ $(function () {
 $(".stat_infor").on('click', 'tr > td > .send_message', function () {
     var queue_name = $(this).attr("queue_name");
     var message = prompt("请输入要推送的数据：");
+
     if (message == null || message.trim() == "" ) {
         alert("输入不能为空");
         return;
@@ -100,7 +101,7 @@ $(".stat_infor").on('click', 'tr > td > .send_message', function () {
 
     $.ajax({
         url: "/put",
-        type: 'GET',
+        type: 'POST',
         cache: false,
         contentType: "application/x-www-form-urlencoded",
         data: {
@@ -109,12 +110,7 @@ $(".stat_infor").on('click', 'tr > td > .send_message', function () {
         },
         dataType: "json",
         success: function (data) {
-            console.log(data);
-            if (data.status == 1) {
-
-            } else {
-
-            }
+            alert(JSON.stringify(data));
         },
         error: function (err) {
         },

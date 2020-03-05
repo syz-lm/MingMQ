@@ -14,8 +14,7 @@ setup(
     zip_safe=False,
     install_requires=[
         'flask',
-        'flask_httpauth',
-        'uwsgi'
+        'flask_httpauth'
     ],
     entry_points="""
     [console_scripts]
