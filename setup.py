@@ -2,7 +2,7 @@ from setuptools import find_packages, setup
 
 setup(
     name='mingmq',
-    version='1.0.4',
+    version='1.0.5',
     url='https://github.com/zswj123/mingmq',
     license='',
     maintainer='zswj123',
@@ -14,10 +14,12 @@ setup(
     zip_safe=False,
     install_requires=[
         'flask',
-        'flask_httpauth'
+        'flask_httpauth',
+        'uwsgi'
     ],
     entry_points="""
     [console_scripts]
     mmserver = mingmq.command:main
+    mmweb = mingmq.api:main
     """
 )

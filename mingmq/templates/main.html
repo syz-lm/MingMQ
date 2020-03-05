@@ -1,10 +1,29 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="zh">
 <head>
     <meta charset="UTF-8">
-    <title>Title</title>
+    <title>MingMQ服务器监控</title>
+    <link href={{url_for("static", filename="main.css")}} rel="stylesheet"/>
+    <link rel="shortcut icon" href={{ url_for("static", filename="favicon.ico") }}>
+    <script src={{url_for("static", filename="jquery-3.4.1.min.js")}}></script>
 </head>
 <body>
+<div class="header">
+    <span class="title">欢迎使用MingMQ监控Web控制台。</span>
+    <button class="logout">退出</button>
+</div>
+<div class="content">
+    <button class="create_queue">创建队列</button>
+    <table class="stat_infor" border="1">
+    </table>
+</div>
+<div class="footer">
 
+</div>
+<script src={{url_for("static", filename="main.js")}}></script>
+
+<audio controls="controls" autoplay="autoplay">
+    <source src={{url_for('static', filename="原声带-醉饮千山.mp3")}}/>
+</audio>
 </body>
 </html>

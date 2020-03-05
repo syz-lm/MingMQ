@@ -1,6 +1,6 @@
 # MingMQ
 
-一个跨平台高性能MQ消息服务，支持和RabbitMQ服务器的大多数功能。
+一个跨平台MQ消息服务，支持和RabbitMQ服务器的大多数功能。
 
 ![](https://github.com/zswj123/MingMQ/blob/local/logo.jpg)
 
@@ -26,6 +26,20 @@ $ mmserver
 IP/端口:0.0.0.0:15673, 用户名/密码:mingmq/mm5201314，最大并发数:100，超时时间: 10
 
 ```
+
+默认端口15673。
+
+## Web Console
+
+启动mmserver监控WEB控制台：
+
+```
+$ mmweb
+```
+
+![](https://github.com/zswj123/MingMQ/blob/local/web_console.png)
+
+默认端口15674。
 
 ## Client
 ### Hello, World!
@@ -62,10 +76,6 @@ print('关闭成功')
 
 ## Future
 
-* api需要编写main页面和调用mmserver get_stat的接口和前端js代码；
-* api页面需要编写当api main页面上用户点击退出后，默认返回401，需要接收401状态吗并跳转到主页面；
-* client需要编写clear_queue, delete_queue, get_speed，get_stat测试；
-* mmserver需要编写get_stat的handler；
 * 需要开发一些测试，并生成测试数据图片，用以在readme页面进行展示，用来吸引更多的用户；
 * readme需要再修改一下；
 * 需要编写一定的rst文档，编写之前需要去询问一下tornado或者借鉴一下他们rst文档是怎么快速生成的方法；

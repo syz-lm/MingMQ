@@ -11,7 +11,9 @@ QueueAckMemory用于存放指定任务队列的未确认任务id号；
 4. 每当客户端确认一个消息时，在QueueAckMemory中pop出指定消息id；
 """
 
-import platform, time, math
+import math
+import platform
+import time
 from queue import Queue
 
 if not platform.platform().startswith('Linux'):
@@ -306,6 +308,7 @@ class StatMemory:
     '''
     队列的send/get/ack速度统计
     '''
+
     def __init__(self):
         self._map = dict()
         self._speed = dict()

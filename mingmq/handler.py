@@ -2,9 +2,10 @@
 
 import json
 import logging
+import math
+import platform
 import socket
 import struct
-import platform
 import time
 
 if platform.platform().startswith('Linux'):
@@ -21,13 +22,13 @@ from mingmq.status import ServerStatus
 
 class Handler:
     def __init__(
-        self,
-        sock: socket.socket,
-        addr: str,
-        queue_memory: QueueMemory,
-        task_ack_memory: TaskAckMemory,
-        stat_memory: StatMemory,
-        server_status: ServerStatus
+            self,
+            sock: socket.socket,
+            addr: str,
+            queue_memory: QueueMemory,
+            task_ack_memory: TaskAckMemory,
+            stat_memory: StatMemory,
+            server_status: ServerStatus
     ):
         self._sock = sock
         self._addr = addr
@@ -144,6 +145,10 @@ class Handler:
             self._get_speed(msg)
         elif _type == MESSAGE_TYPE['GET_STAT']:
             self._get_stat()
+        elif _type == MESSAGE_TYPE['DELETE_QUEUE']:
+            self._delete_queue(msg)
+        elif _type == MESSAGE_TYPE['CLEAR_QUEUE']:
+            self._clear_queue(msg)
         else:
             self._not_found(msg)
 
@@ -156,7 +161,7 @@ class Handler:
         self._send_data(res_pkg)
 
     def _get_speed(self, msg):
-        if self._data_wrong('_get_speed', ('queue_name', ), msg) is not False:
+        if self._data_wrong('_get_speed', ('queue_name',), msg) is not False:
             queue_name = msg['queue_name']
 
             send_stat_var = 'send_' + queue_name
@@ -260,7 +265,7 @@ class Handler:
         t = now - last_time
         if t > 10:
             n = self._stat_memory.get(stat_var)
-            self._stat_memory.set_speed_per_second(stat_var, n / t)
+            self._stat_memory.set_speed_per_second(stat_var, math.ceil(n / t))
             self._stat_memory.set_last_time(now)
 
     def _declare_queue(self, msg):
@@ -268,9 +273,9 @@ class Handler:
             queue_name = msg['queue_name']
             if self._queue_memory.decleare(queue_name) and \
                     self._task_ack_memory.declare(queue_name) and \
-                        self._stat_memory.declare('send_' + queue_name) and \
-                            self._stat_memory.declare('get_' + queue_name) and \
-                                self._stat_memory.declare('ack_' + queue_name):
+                    self._stat_memory.declare('send_' + queue_name) and \
+                    self._stat_memory.declare('get_' + queue_name) and \
+                    self._stat_memory.declare('ack_' + queue_name):
                 res_msg = ResMessage(MESSAGE_TYPE['DECLARE_QUEUE'], SUCCESS, [])
                 res_pkg = json.dumps(res_msg).encode()
                 self._send_data(res_pkg)
@@ -289,9 +294,9 @@ class Handler:
             queue_name = msg['queue_name']
             if self._queue_memory.delete(queue_name) and \
                     self._task_ack_memory.delete(queue_name) and \
-                        self._stat_memory.delete('send_' + queue_name) and \
-                            self._stat_memory.delete('get_' + queue_name) and \
-                                self._stat_memory.delete('ack_' + queue_name):
+                    self._stat_memory.delete('send_' + queue_name) and \
+                    self._stat_memory.delete('get_' + queue_name) and \
+                    self._stat_memory.delete('ack_' + queue_name):
 
                 res_msg = ResMessage(MESSAGE_TYPE['DECLARE_QUEUE'], SUCCESS, [])
                 res_pkg = json.dumps(res_msg).encode()

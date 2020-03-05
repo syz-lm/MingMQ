@@ -20,10 +20,10 @@ MESSAGE_TYPE = {
     'NOT_FOUND': 6,  # 找不到这个方法
     'FORBIDDEN': 7,  # 阻止访问
     'DATA_WRONG': 8,  # 数据错误
-    'DELETE_QUEUE': 9, # 删除队列
-    'CLEAR_QUEUE': 10, # 清空队列数据
-    'GET_SPEED': 11, # 获取速度
-    'GET_STAT': 12, # 获取所有统计数据
+    'DELETE_QUEUE': 9,  # 删除队列
+    'CLEAR_QUEUE': 10,  # 清空队列数据
+    'GET_SPEED': 11,  # 获取速度
+    'GET_STAT': 12,  # 获取所有统计数据
 }
 
 # 数据最大长度
@@ -37,6 +37,7 @@ FAIL = 0
 GET = 0
 SEND = 1
 ACK = 2
+
 
 class ReqGetStatMessage(dict):
     '''

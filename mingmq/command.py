@@ -1,6 +1,5 @@
 import argparse
 import logging
-import tempfile
 
 from mingmq.server import Server
 from mingmq.status import ServerStatus

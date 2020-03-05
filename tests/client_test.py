@@ -2,7 +2,6 @@
 客户端启动测试
 """
 import logging
-import sys
 from threading import Thread
 
 from mingmq.client import Client
@@ -18,7 +17,7 @@ def init_cli(first=False):
     """
     客户端测试
     """
-    client = Client('192.168.1.30', 15673)
+    client = Client('localhost', 15673)
 
     client.login('mingmq', 'mm5201314')
 

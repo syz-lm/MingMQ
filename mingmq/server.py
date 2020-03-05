@@ -22,7 +22,7 @@ class Server:
         self._server_status = server_status
 
         self._queue_memory = QueueMemory()  # 定义消息队列内存
-        self._stat_memory = StatMemory() # 统计内存
+        self._stat_memory = StatMemory()  # 统计内存
         self._queue_ack_memory = TaskAckMemory()  # 定义消息队列应答内存
 
         self._sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)

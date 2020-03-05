@@ -6,7 +6,6 @@ import json
 import logging
 import socket
 import struct
-import math
 
 from mingmq.message import (ReqLoginMessage, MessageWindow,
                             SUCCESS, ReqLogoutMessage, ReqDeclareQueueMessage,
