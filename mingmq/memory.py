@@ -296,6 +296,31 @@ class SyncTaskAckMemory:
                     return False
             return False
 
+    def clear(self, queue_name):
+        """
+        清空一个队列
+        :param queue_name: str，队列名称
+        :return: boolean，True成功，False失败
+        """
+        with _LOCK:
+            if queue_name in self._map:
+                del self._map[queue_name]
+                self._map[queue_name] = set()
+                return True
+            return False
+
+    def delete(self, queue_name):
+        """
+        删除一个队列
+        :param queue_name: str，队列名称
+        :return: boolean，True成功，False失败
+        """
+        with _LOCK:
+            if queue_name in self._map:
+                del self._map[queue_name]
+                return True
+            return False
+
     def get_stat(self):
         tmp = dict()
         for k, v in self._map.items():
