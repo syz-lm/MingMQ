@@ -7,6 +7,7 @@ import platform
 import socket
 import struct
 import time
+from multiprocessing import Queue
 
 if platform.platform().startswith('Linux'):
     from mingmq.memory import QueueMemory, TaskAckMemory
@@ -15,7 +16,11 @@ else:
 
 from mingmq.memory import StatMemory
 
-from mingmq.message import (ResMessage, SUCCESS, FAIL, MESSAGE_TYPE, Task, MAX_DATA_LENGTH, GET, SEND, ACK)
+from mingmq.message import (ResMessage, SUCCESS, FAIL, MESSAGE_TYPE, Task,
+                            MAX_DATA_LENGTH, GET, SEND, ACK, PipeAckProcessGetMessage,
+                            PipeAckProcessAckMessage, PipeDeleteQueueNoackMessage,
+                            PipeDeleteAckMessageID, PipeCompletelyPersistentProcessSendMessage,
+                            PipeCompletelyPersistentProcessGetMessage, PipeCompletelyPersistentProcessDeleteQueueMessage)
 from mingmq.utils import to_json, check_msg
 from mingmq.status import ServerStatus
 
@@ -28,7 +33,9 @@ class Handler:
             queue_memory: QueueMemory,
             task_ack_memory: TaskAckMemory,
             stat_memory: StatMemory,
-            server_status: ServerStatus
+            server_status: ServerStatus,
+            completely_persistent_process_queue: Queue,
+            ack_process_queue: Queue
     ):
         self._sock = sock
         self._addr = addr
@@ -38,6 +45,8 @@ class Handler:
         self._session_id = None
         self._connected = True
         self.server_status = server_status
+        self._completely_persistent_process_queue = completely_persistent_process_queue
+        self._ack_process_queue = ack_process_queue
 
         self._buf: bytes = b''
         self._should_read = 0
@@ -116,7 +125,7 @@ class Handler:
             self._connected = False
             return
 
-        logging.info('客户端[IP %s]发来数据转换成JSON对象[%s]。', repr(self._addr), repr(msg))
+        logging.info('客户端[IP %s]发来数据转换成JSON对象[%s]。', repr(self._addr), repr(msg)[:100])
 
         if msg is not False:  # 如果msg为False则断开连接
             if check_msg(msg) is not False:
@@ -149,8 +158,44 @@ class Handler:
             self._delete_queue(msg)
         elif _type == MESSAGE_TYPE['CLEAR_QUEUE']:
             self._clear_queue(msg)
+        elif _type == MESSAGE_TYPE['DELETE_ACK_MESSAGE_ID']:
+            self._delete_ack_message_id_queue_name(msg)
+        elif _type == MESSAGE_TYPE['RESTORE_ACK_MESSAGE_ID']:
+            self._restore_ack_message_id(msg)
         else:
             self._not_found(msg)
+
+    def _restore_ack_message_id(self, msg):
+        if self._data_wrong('_restore_ack_message_id', ('message_id', 'queue_name'), msg) is not False:
+            queue_name = msg['queue_name']
+            message_id = msg['message_id']
+
+            if self._task_ack_memory.put(queue_name, message_id):
+                res_msg = ResMessage(MESSAGE_TYPE['RESTORE_ACK_MESSAGE_ID'], SUCCESS, [])
+                res_pkg = json.dumps(res_msg).encode()
+                self._send_data(res_pkg)
+            else:
+                res_msg = ResMessage(MESSAGE_TYPE['RESTORE_ACK_MESSAGE_ID'], FAIL, [])
+                res_pkg = json.dumps(res_msg).encode()
+                self._send_data(res_pkg)
+
+    def _delete_ack_message_id_queue_name(self, msg):
+        if self._data_wrong('_delete_ack_message_id', ('message_id', 'queue_name'), msg) is not False:
+            queue_name = msg['queue_name']
+            message_id = msg['message_id']
+
+            if self._task_ack_memory.get(queue_name, message_id):
+
+                pdam = PipeDeleteAckMessageID(queue_name, message_id)
+                self._ack_process_queue.put_nowait(pdam)
+
+                res_msg = ResMessage(MESSAGE_TYPE['DELETE_ACK_MESSAGE_ID'], SUCCESS, [])
+                res_pkg = json.dumps(res_msg).encode()
+                self._send_data(res_pkg)
+            else:
+                res_msg = ResMessage(MESSAGE_TYPE['DELETE_ACK_MESSAGE_ID'], FAIL, [])
+                res_pkg = json.dumps(res_msg).encode()
+                self._send_data(res_pkg)
 
     def _get_stat(self):
         res_msg = ResMessage(MESSAGE_TYPE['GET_SPEED'], SUCCESS, [{
@@ -189,7 +234,7 @@ class Handler:
                 break
 
         if err > 0:
-            logging.info('%s, 参数错误 %s, 需要参数 %s', opera, msg, args)
+            logging.info('%s, 参数错误 %s, 需要参数 %s', opera, msg[:100], args)
 
             res_msg = ResMessage(MESSAGE_TYPE['DATA_WRONG'], FAIL, [])
             res_pkg = json.dumps(res_msg).encode()
@@ -203,6 +248,9 @@ class Handler:
                 queue_name = msg['queue_name']
                 message_id = msg['message_id']
                 if self._task_ack_memory.get(queue_name, message_id):
+                    papam = PipeAckProcessAckMessage(message_id, queue_name)
+                    self._ack_process_queue.put_nowait(papam)
+
                     res_msg = ResMessage(MESSAGE_TYPE['ACK_MESSAGE'], SUCCESS, [])
                     res_pkg = json.dumps(res_msg).encode()
                     self._send_data(res_pkg)
@@ -220,6 +268,10 @@ class Handler:
                 message_data = msg['message_data']
                 task = Task(message_data)
                 if self._queue_memory.put(queue_name, task):
+
+                    pcppsm = PipeCompletelyPersistentProcessSendMessage(queue_name, message_data, task.message_id)
+                    self._completely_persistent_process_queue.put_nowait(pcppsm)
+
                     res_msg = ResMessage(MESSAGE_TYPE['SEND_DATA_TO_QUEUE'], SUCCESS, [])
                     res_pkg = json.dumps(res_msg).encode()
                     self._send_data(res_pkg)
@@ -235,9 +287,16 @@ class Handler:
             if self._data_wrong('_get_data_from_queue', ('queue_name',), msg) is not False:
                 queue_name = msg['queue_name']
                 task = self._queue_memory.get(queue_name)
-                # 这里知不知道需要优化一下啊，因为内存翻倍了啊！
+
                 if task is not None and \
-                        self._task_ack_memory.put(queue_name, task.message_id, task.message_data):
+                        self._task_ack_memory.put(queue_name, task.message_id):
+
+                    papgm = PipeAckProcessGetMessage(task.message_id, queue_name, task.message_data)
+                    self._ack_process_queue.put_nowait(papgm)
+
+                    pcppgm = PipeCompletelyPersistentProcessGetMessage(queue_name, task.message_id)
+                    self._completely_persistent_process_queue.put_nowait(pcppgm)
+
                     res_msg = ResMessage(MESSAGE_TYPE['GET_DATA_FROM_QUEUE'], SUCCESS, [task])
                     res_pkg = json.dumps(res_msg).encode()
                     self._send_data(res_pkg)
@@ -300,6 +359,12 @@ class Handler:
                     self._stat_memory.delete('get_' + queue_name) and \
                     self._stat_memory.delete('ack_' + queue_name):
 
+                pcppdqm = PipeCompletelyPersistentProcessDeleteQueueMessage(queue_name)
+                self._completely_persistent_process_queue.put_nowait(pcppdqm)
+
+                pdqnm = PipeDeleteQueueNoackMessage(queue_name)
+                self._ack_process_queue.put_nowait(pdqnm)
+
                 res_msg = ResMessage(MESSAGE_TYPE['DECLARE_QUEUE'], SUCCESS, [])
                 res_pkg = json.dumps(res_msg).encode()
                 self._send_data(res_pkg)
@@ -358,7 +423,7 @@ class Handler:
     def _send_data(self, data):
         if self._connected:
             header = struct.pack('!i', len(data))
-            logging.info('发送给客户端[%s]的消息为: %s', self._addr, header + data)
+            logging.info('发送给客户端[%s]的消息为: %s', self._addr, str(header + data)[:100])
             self._sock.sendall(header + data)
 
     def _has_loggin(self):

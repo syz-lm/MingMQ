@@ -1,0 +1,200 @@
+* {
+    margin: 0 0;
+    padding: 0 0;
+}
+
+body {
+    background: black;
+    color: green;
+}
+
+button {
+    color: blue;
+    border: solid 1px;
+    font-size: 13px;
+    height: 20px;
+    cursor: pointer;
+}
+
+.content > table > tr > th, .content > table > tr > td {
+    color: green;
+    /*width: 95px;*/
+    text-align: center;
+    height: 22px;
+    cursor: crosshair;
+}
+
+
+.content > table > tr > th:hover, .content > table > tr > td:hover {
+    background: gray;
+    color: white;
+}
+
+
+.header, .content, .footer {
+    width: 1080px;
+    height: auto;
+    margin: 0 auto;
+    box-sizing: border-box;
+}
+
+.content > table {
+    width: inherit;
+    word-break:break-all;
+    word-wrap: break-word;
+}
+
+.header {
+    margin-top: 20px;
+    margin-bottom: 20px;
+    background: blue;
+    color: white;
+}
+
+.header > .title {
+    font-size: 30px;
+    cursor: crosshair;
+}
+
+.header > .logout {
+    color: red;
+    float: right;
+    font-size: 30px;
+    height: 40px;
+    margin-right: 2px;
+}
+
+.create_queue {
+    float: right;
+    margin-right: 3px;
+    margin-bottom: 5px;
+}
+
+audio {
+    position: fixed;
+    bottom: 0px;
+    left: 50%;
+    transform: translateX(-50%);
+}
+
+.queue_name {
+    color: yellow;
+}
+
+.now {
+    color: pink;
+}
+
+.task_ids {
+    position: fixed;
+    height: 100%    ;
+    left: 0;
+    top: 0;
+    display: none;
+    background: white;
+    color: black;
+    width: 535px;
+    box-sizing: content-box;
+    overflow-y: scroll;
+    overflow-x: hidden;
+}
+
+.task_ids_ct {
+    position: fixed;
+    left: 5px;
+    top: 0px;
+    color: blueviolet;
+}
+
+.task_ids > table {
+    width: 510px;
+    word-break: break-all;
+    word-wrap: break-word;
+    table-layout: fixed; /* 设置这个之后，td内容超出长度就不会改变table的宽度了 */
+    font-size: 9px;
+}
+
+.task > .data {
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    overflow: hidden;
+    cursor: pointer;
+}
+
+.task > th {
+    width: 100px;
+    text-align: left;
+    color: green;
+    cursor: crosshair;
+}
+
+.task > td {
+    width: 100px;
+    text-align: left;
+    color: black;
+    cursor: crosshair;
+}
+
+.task > td:hover {
+    background: gray;
+    color: white;
+}
+
+.task > td:nth-of-type(5) > .delete {
+    width: 100%;
+    height: 100%;
+}
+
+.pag {
+    background: black;
+    color: white;
+    border: none;
+}
+
+.pag > td:nth-of-type(4) {
+    text-align: center;
+}
+
+.task_ids_ct {
+    cursor: pointer;
+}
+
+.task > th {
+    background: black;
+}
+
+.pre_page { width: 100%;}
+
+.next_page { width: 100%; }
+
+.refresh {
+    width: 100%;
+}
+
+.decode_data {
+    position: fixed;
+    width: 600px;
+    height: 400px;
+    left: 50%;
+    top: 50%;
+    transform: translate(-50%, -50%);
+    display: none;
+    background: white;
+    border: solid 1px;
+}
+
+.decode_data > textarea {
+    width: 598px;
+    height: 370px;
+    cursor: crosshair;
+}
+
+.decode_data > button {
+    float: right;
+}
+
+.decode_data > ._message_id {
+    float: left;
+    color: blue;
+    border: solid 1px;
+}

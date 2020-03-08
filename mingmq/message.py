@@ -2,12 +2,7 @@
 数据类型
 """
 
-import logging
 import time
-from io import StringIO
-from queue import Queue
-
-from mingmq.utils import str_to_hex
 
 # 命令
 MESSAGE_TYPE = {
@@ -24,6 +19,8 @@ MESSAGE_TYPE = {
     'CLEAR_QUEUE': 10,  # 清空队列数据
     'GET_SPEED': 11,  # 获取速度
     'GET_STAT': 12,  # 获取所有统计数据
+    'DELETE_ACK_MESSAGE_ID': 13, # 删除ack内存中指定的message_id内存
+    'RESTORE_ACK_MESSAGE_ID': 14, # 从磁盘文件恢复ack message_id一般用于服务器重启时重新加载内存
 }
 
 # 数据最大长度
@@ -37,6 +34,36 @@ FAIL = 0
 GET = 0
 SEND = 1
 ACK = 2
+
+
+class ReqRestoreAckMessageIDMessage(dict):
+    def __init__(self, message_id, queue_name):
+        self.type = MESSAGE_TYPE['RESTORE_ACK_MESSAGE_ID']
+        self.queue_name = queue_name
+        self.message_id = message_id
+
+        super().__init__({
+            'type': self.type,
+            'queue_name': self.queue_name,
+            'message_id': self.message_id
+        })
+
+
+class ReqDeleteAckMessageIDMessage(dict):
+    """
+    删除ack message_id
+    """
+
+    def __init__(self, queue_name, message_id):
+        self.type = MESSAGE_TYPE['DELETE_ACK_MESSAGE_ID']
+        self.queue_name = queue_name
+        self.message_id = message_id
+
+        super().__init__({
+            'type': self.type,
+            'queue_name': self.queue_name,
+            'message_id': self.message_id
+        })
 
 
 class ReqGetStatMessage(dict):
@@ -280,95 +307,133 @@ class ResMessage(dict):
         })
 
 
-def package_message(data):
+ACK_PROCESS_MESSAGE = {
+    'GET': 0, # 当消费者获取任务
+    'ACK': 1, # 当消费者确认任务
+    'ACK_RETRY': 2, # 重发未确认消息
+    'DELETE_QUEUE_NOACK': 3, # 删除指定队列名未确认的任务
+    'DELETE_ACK_MESSAGE_ID': 4
+}
+
+
+class PipeDeleteQueueNoackMessage(dict):
     """
-    封包
+    删除指定队列名未确认的任务
     """
-    res_pkg = MessageWindow.MESSAGE_BEGIN + str_to_hex(data) + MessageWindow.MESSAGE_END
-    return res_pkg.encode()
+    def __init__(self, queue_name):
+        self.type = ACK_PROCESS_MESSAGE['DELETE_QUEUE_NOACK']
+        self.queue_name = queue_name
+
+        super().__init__({
+            'type': self.type,
+            'queue_name': self.queue_name,
+        })
 
 
-class MessageWindow:
+class PipeDeleteAckMessageID(dict):
+    def __init__(self, queue_name, message_id):
+        self.type = ACK_PROCESS_MESSAGE['DELETE_ACK_MESSAGE_ID']
+        self.queue_name = queue_name
+        self.message_id = message_id
+
+        super().__init__({
+            'type': self.type,
+            'queue_name': self.queue_name,
+            'message_id': self.message_id
+        })
+
+
+class PipeAckProcessGetMessage(dict):
     """
-    这段代码，我想了3天，还进行优化过，我真的舍不得删掉。
-    虽然，我通过pymysql源码找到了更好的算法。
-
-    消息窗口
+    确认消息进程请求Get结构体
     """
+    def __init__(self, message_id, queue_name, message_data):
+        self.type = ACK_PROCESS_MESSAGE['GET']
+        self.message_id = message_id
+        self.queue_name = queue_name
+        self.message_data = message_data
 
-    # 数据包开始
-    MESSAGE_BEGIN = 'K'
-    # 数据包结束
-    MESSAGE_END = 'J'
+        super().__init__({
+            'type': self.type,
+            'message_id': self.message_id,
+            'queue_name': self.queue_name,
+            'message_data': self.message_data,
+            'pub_date': time.time()
+        })
 
+
+class PipeAckProcessAckMessage(dict):
+    """
+    确认消息进程请求Ack结构体
+    """
+    def __init__(self, message_id, queue_name):
+        self.type = ACK_PROCESS_MESSAGE['ACK']
+        self.message_id = message_id
+        self.queue_name = queue_name
+
+        super().__init__({
+            'type': self.type,
+            'message_id': self.message_id,
+            'queue_name': self.queue_name,
+            'pub_date': time.time()
+        })
+
+
+class PipeAckProcessAckRetryMessage(dict):
+    """
+    确认消息重发任务结构体
+    """
     def __init__(self):
-        self._current_buffer = StringIO()
-        self._message_window = Queue()
+        self.type = ACK_PROCESS_MESSAGE['ACK_RETRY']
 
-    def grouping_message(self, data):
-        """
-        对客户端发送来的数据组装，并分组
-        :param data: str, 数据
-        """
-        start_count = -1
-        end_count = -1
+        super().__init__({
+            'type': self.type,
+            'pub_date': time.time()
+        })
 
-        if len(data) > 0:
-            try:
-                start_count = data.index(MessageWindow.MESSAGE_BEGIN)
-            except ValueError:
-                pass
-            try:
-                end_count = data.index(MessageWindow.MESSAGE_END)
-            except ValueError:
-                pass
 
-            # `aaaa`
-            if start_count == -1 and end_count == -1:
-                self._current_buffer.write(data)
+COMPLETELY_PERSISTENT_PROCESS_MESSAGE = {
+    'SEND': 0, # 当消费者发送任务
+    'GET': 1, # 当消费者获取任务
+    'DELETE_QUEUE': 2, # 根据队列名删除
+}
 
-            # 正常数据：`Kaaa', 错误数据：`aaKaa'
-            elif start_count != -1 and end_count == -1:
-                if start_count != 0:
-                    err_data = data[:start_count]
-                    logging.info('客户端发送的数据可能被网络中被篡改：%s', err_data)
 
-                self._current_buffer.write(data[start_count + 1:])
+class PipeCompletelyPersistentProcessSendMessage(dict):
+    def __init__(self, queue_name, message_data, message_id):
+        self.type = COMPLETELY_PERSISTENT_PROCESS_MESSAGE['SEND']
+        self.queue_name = queue_name
+        self.message_data = message_data
+        self.message_id = message_id
 
-            # `Jaa`, `aaJaa`, `aaj`
-            elif start_count == -1 and end_count != -1:
-                self._current_buffer.write(data[:end_count])
-                self._message_window.put_nowait(self._current_buffer.getvalue())
-                self._current_buffer.close()
-                self._current_buffer = StringIO()
-                # self.current_buffer.truncate(0)
-                # self.current_buffer.write(data[end_count + 1:])
+        super().__init__({
+            'type': self.type,
+            'queue_name': self.queue_name,
+            'message_data': self.message_data,
+            'message_id': self.message_id,
+            'pub_date': time.time()
+        })
 
-            # `KaaJ`, `KaaJaa`, `aaKaaJaa`, `aaKaaJ`, `KaaJKaaJ`, `JaaK`, `JKaa`
-            elif start_count != -1 and end_count != -1:
-                if start_count < end_count:
-                    self._current_buffer.truncate(0)
-                    self._current_buffer.write(data[start_count + 1: end_count])
-                    self._message_window.put_nowait(self._current_buffer.getvalue())
-                    self._current_buffer.close()
-                    self._current_buffer = StringIO()
-                    self.grouping_message(data[end_count + 1:])
-                else:
-                    self._current_buffer.write(data[:end_count])
-                    self._message_window.put_nowait(self._current_buffer.getvalue())
-                    self._current_buffer.close()
-                    self._current_buffer = StringIO()
-                    self.grouping_message(data[start_count + 1:])
 
-    def loop_message_window(self):
-        """
-        遍历消息窗口
-        """
-        while self._message_window.empty() is False:
-            yield self._message_window.get_nowait()
+class PipeCompletelyPersistentProcessGetMessage(dict):
+    def __init__(self, queue_name, message_id):
+        self.type = COMPLETELY_PERSISTENT_PROCESS_MESSAGE['GET']
+        self.queue_name = queue_name
+        self.message_id = message_id
 
-    def finished(self):
-        """
-        是否结束读取
-        """
-        return self._message_window.qsize() > 0
+        super().__init__({
+            'type': self.type,
+            'queue_name': queue_name,
+            'message_id': message_id
+        })
+
+
+class PipeCompletelyPersistentProcessDeleteQueueMessage(dict):
+    def __init__(self, queue_name):
+        self.type = COMPLETELY_PERSISTENT_PROCESS_MESSAGE['DELETE_QUEUE']
+        self.queue_name = queue_name
+
+        super().__init__({
+            'type': self.type,
+            'queue_name': self.queue_name
+        })

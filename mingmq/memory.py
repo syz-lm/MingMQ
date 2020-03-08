@@ -15,6 +15,7 @@ import math
 import platform
 import time
 from queue import Queue
+from mingmq.utils import get_size
 
 if not platform.platform().startswith('Linux'):
     from threading import Lock
@@ -29,6 +30,9 @@ class QueueMemory:
 
     def __init__(self):
         self._map = dict()
+
+    def get_self(self):
+        return self._map
 
     def decleare(self, queue_name):
         """
@@ -68,7 +72,7 @@ class QueueMemory:
         """
         向队指定的队列中发布任务
         :param queue_name: str，队列名
-        :param message: str，消息
+        :param message: Task，消息
         :return: boolean，True成功，False失败
         """
         if queue_name in self._map:
@@ -89,7 +93,7 @@ class QueueMemory:
     def get_stat(self):
         tmp = dict()
         for k, v in self._map.items():
-            tmp[k] = v.qsize()
+            tmp[k] = [v.qsize(), get_size(v)]
 
         return tmp
 
@@ -104,13 +108,16 @@ class TaskAckMemory:
     def __init__(self):
         self._map = dict()
 
+    def get_self(self):
+        return self._map
+
     def declare(self, set_name):
         """
         :param set_name: str，队列名
         :return: boolean，True成功，False失败
         """
         if set_name not in self._map:
-            self._map[set_name] = dict()
+            self._map[set_name] = set()
             return True
         return False
 
@@ -121,7 +128,7 @@ class TaskAckMemory:
         """
         if set_name in self._map:
             del self._map[set_name]
-            self._map[set_name] = dict()
+            self._map[set_name] = set()
             return True
         return False
 
@@ -135,15 +142,14 @@ class TaskAckMemory:
             return True
         return False
 
-    def put(self, queue_name, message_id, message_data):
+    def put(self, queue_name, message_id):
         """
         :param queue_name: str，队列名
         :param message_id: str，消息id
-        :param message_data: 消息
         :return: bookean，True成功，False失败
         """
         if queue_name in self._map:
-            self._map[queue_name][message_id] = message_data
+            self._map[queue_name].add(message_id)
             return True
         return False
 
@@ -151,13 +157,12 @@ class TaskAckMemory:
         """
         :param queue_name: str，队列名称
         :param message_id: str，消息id
-        :return: str，消息数据 , False表示失败
+        :return: boolean，True成功 , False表示失败
         """
         if queue_name in self._map and len(self._map[queue_name]) != 0:
             try:
-                message_data = self._map[queue_name][message_id]
-                del self._map[queue_name][message_id]
-                return message_data
+                self._map[queue_name].remove(message_id)
+                return True
             except KeyError:
                 return False
         return False
@@ -165,7 +170,7 @@ class TaskAckMemory:
     def get_stat(self):
         tmp = dict()
         for k, v in self._map.items():
-            tmp[k] = len(v)
+            tmp[k] = [len(v), get_size(v)]
 
         return tmp
 
@@ -177,6 +182,9 @@ class SyncQueueMemory:
 
     def __init__(self):
         self._map = dict()
+
+    def get_self(self):
+        return self._map
 
     def decleare(self, queue_name):
         """
@@ -242,7 +250,7 @@ class SyncQueueMemory:
     def get_stat(self):
         tmp = dict()
         for k, v in self._map.items():
-            tmp[k] = v.qsize()
+            tmp[k] = [v.qsize(), get_size(v)]
 
         return tmp
 
@@ -257,6 +265,9 @@ class SyncTaskAckMemory:
     def __init__(self):
         self._map = dict()
 
+    def get_self(self):
+        return self._map
+
     def declare(self, queue_name):
         """
         声明一个队列
@@ -265,21 +276,20 @@ class SyncTaskAckMemory:
         """
         with _LOCK:
             if queue_name not in self._map:
-                self._map[queue_name] = dict()
+                self._map[queue_name] = set()
                 return True
             return False
 
-    def put(self, queue_name, message_id, message_data):
+    def put(self, queue_name, message_id):
         """
         向指定队列中增加一条消息
         :param queue_name: str，队列名
         :param message_id: str，消息id
-        :param message_data: str，消息数据
         :return: boolean，True成功，False失败
         """
         with _LOCK:
             if queue_name in self._map:
-                self._map[queue_name][message_id] = message_data
+                self._map[queue_name].add(message_id)
                 return True
             return False
 
@@ -293,9 +303,8 @@ class SyncTaskAckMemory:
         with _LOCK:
             if queue_name in self._map and len(self._map[queue_name]) != 0:
                 try:
-                    message_data = self._map[queue_name][message_id]
-                    del self._map[queue_name][message_id]
-                    return message_data
+                    self._map[queue_name].remove(message_id)
+                    return True
                 except KeyError:
                     return False
             return False
@@ -308,7 +317,7 @@ class SyncTaskAckMemory:
         with _LOCK:
             if queue_name in self._map:
                 del self._map[queue_name]
-                self._map[queue_name] = dict()
+                self._map[queue_name] = set()
                 return True
             return False
 
@@ -326,7 +335,7 @@ class SyncTaskAckMemory:
     def get_stat(self):
         tmp = dict()
         for k, v in self._map.items():
-            tmp[k] = len(v)
+            tmp[k] = [len(v), get_size(v)]
 
         return tmp
 

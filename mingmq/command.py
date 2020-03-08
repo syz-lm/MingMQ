@@ -1,12 +1,23 @@
 import argparse
+import platform
 import logging
+logging.basicConfig(level=logging.INFO)
 
-from mingmq.server import Server
+from multiprocessing import Queue, Process, freeze_support
+import json
+import time
+
 from mingmq.status import ServerStatus
+from mingmq.settings import CONFIG_FILE
+from mingmq.utils import check_config
+from mingmq.process import MQProcess, AckProcess, CompletelyPersistentProcess
 
 
 def main():
-    parser = argparse.ArgumentParser('欢迎使用MingMQ消息队列服务器！\n')
+    parser = argparse.ArgumentParser('欢迎使用MingMQ消息队列服务器。')
+
+    parser.add_argument('--CONFIG_REUSE', type=int, default=0,
+                        help='是否读取配置文件来启动服务：0为不读取，1为读取，1则使用默认配置文件路径' + CONFIG_FILE + '，该路径不允许修改。')
 
     parser.add_argument('--HOST', type=str, default='0.0.0.0',
                         help='输入服务器IP地址：: 默认，0.0.0.0')
@@ -21,19 +32,101 @@ def main():
     parser.add_argument('--TIMEOUT', type=int, default='10',
                         help='输入服务器超时时间（仅linux下有效），默认，10')
 
+    ack_process_db_file = '/var/mingmq/ack_process_db_file.db' if not platform.platform().startswith("Windows") else "C:\mingmq\ack_process_db_file.db"
+    parser.add_argument('--ACK_PROCESS_DB_FILE', type=str, default=ack_process_db_file,
+                        help='输入服务器确认消息文件名，默认/var/mingmq/ack_process_db_file.db(windows系统下为C:\mingmq\ack_process_db_file.db)')
+
+    completely_persistent_process_db_file = '/var/mingmq/completely_persistent_process_db_file.db' if not platform.platform().startswith("Windows") else "C:\mingmq\completely_persistent_process_db_file.db"
+    parser.add_argument('--COMPLETELY_PERSISTENT_PROCESS_DB_FILE', type=str, default=completely_persistent_process_db_file,
+                        help='输入服务器确认消息文件名，默认/var/mingmq/completely_persistent_process_db_file.db(windows系统下为C:\mingmq\completely_persistent_process_db_file.db)')
+
     flags = parser.parse_args()
+    _read_command_line(flags)
 
-    print('正在启动，服务器的配置为\nIP/端口:%s:%d, 用户名/密码:%s/%s，最大并发数:%d，超时时间: %d' %
-          (flags.HOST, flags.PORT, flags.USER_NAME, flags.PASSWD,
-           flags.MAX_CONN, flags.TIMEOUT))
 
-    with open('/tmp/mingmq', 'w') as f:
-        f.write(flags.USER_NAME + '\n' + flags.PASSWD + '\n' + str(flags.PORT))
+def _read_command_line(flags):
+    check_result = check_config(flags)
 
-    logging.basicConfig(level=logging.INFO)
+    if check_result == 0:
+        print('FLAGS出现问题。')
+        return
+    elif check_result == 1:
+        print('HOST输入有误。')
+        return
+    elif check_result == 2:
+        print('PORT输入有误。')
+        return
+    elif check_result == 3:
+        print('USER_NAME 或者 PASSWD 输入有误。')
+        return
+    elif check_result == 4:
+        print('确认消息文件路径错误。')
+        return
+    elif check_result == 5:
+        print('发送消息文件路径错误。')
+        return
 
-    server_status = ServerStatus(flags.HOST, flags.PORT, flags.MAX_CONN,
-                                 flags.USER_NAME, flags.PASSWD, flags.TIMEOUT)
+    bd = dict()
+    if flags.CONFIG_REUSE == 0:
+        bd['HOST'] = flags.HOST
+        bd['PORT'] = flags.PORT
+        bd['USER_NAME'] = flags.USER_NAME
+        bd['PASSWD'] = flags.PASSWD
+        bd['MAX_CONN'] = flags.MAX_CONN
+        bd['TIMEOUT'] = flags.TIMEOUT
+        bd['ACK_PROCESS_DB_FILE'] = flags.ACK_PROCESS_DB_FILE
+        bd['COMPLETELY_PERSISTENT_PROCESS_DB_FILE'] = flags.COMPLETELY_PERSISTENT_PROCESS_DB_FILE
 
-    server = Server(server_status)
-    server.serv_forever()
+        with open(CONFIG_FILE, 'w') as f:
+            # ensure_ascii写中文, indent 格式化json
+            json.dump(bd, f, ensure_ascii=False, indent=4)
+    elif flags.CONFIG_REUSE == 1:
+        with open(CONFIG_FILE, 'r') as f:
+            # ensure_ascii写中文, indent 格式化json
+            bd = json.load(f)
+    else:
+        print('您是否要使用上一次使用过的配置来启动服务。')
+        return
+
+    print('正在启动，服务器的配置为\nIP/端口:%s:%d, 用户名/密码:%s/%s，'
+          '最大并发数:%d，超时时间: %d，服务器配置路径: %s，'
+          '服务器确认消息文件名: %s，服务器发送消息文件名: %s' %
+          (bd['HOST'], bd['PORT'], bd['USER_NAME'], bd['PASSWD'],
+           bd['MAX_CONN'], bd['TIMEOUT'], CONFIG_FILE, bd['ACK_PROCESS_DB_FILE'],
+           bd['COMPLETELY_PERSISTENT_PROCESS_DB_FILE']))
+
+    server_status = ServerStatus(bd['HOST'], bd['PORT'], bd['MAX_CONN'],
+                                 bd['USER_NAME'], bd['PASSWD'], bd['TIMEOUT'])
+
+    completely_persistent_process_queue = Queue()
+    ack_process_queue = Queue()
+
+    freeze_support() # 这行没有不能fork
+
+    mmserver = MQProcess(server_status, completely_persistent_process_queue, ack_process_queue)
+    mq_process = Process(target=mmserver.serv_forever)
+    mq_process.start()
+
+    time.sleep(5)
+
+    ackp = AckProcess(bd['ACK_PROCESS_DB_FILE'], bd['HOST'], bd['PORT'],
+                      bd['USER_NAME'], bd['PASSWD'], ack_process_queue)
+
+    ack_process = Process(target=ackp.serv_forever)
+    ack_process.start()
+
+
+    cpp = CompletelyPersistentProcess(bd['COMPLETELY_PERSISTENT_PROCESS_DB_FILE'],
+                                      completely_persistent_process_queue,
+                                      bd['HOST'], bd['PORT'],
+                                      bd['USER_NAME'], bd['PASSWD'])
+    completely_persistent_process = Process(target=cpp.serv_forever)
+    completely_persistent_process.start()
+
+    mq_process.join()
+    ack_process.join()
+    completely_persistent_process.join()
+
+
+if __name__ == '__main__':
+    main()

@@ -3,6 +3,7 @@
 import logging
 import platform
 import socket
+from multiprocessing import Queue
 
 if platform.platform().startswith('Linux'):
     import select
@@ -19,31 +20,40 @@ from mingmq.status import ServerStatus
 
 
 class Server:
-    def __init__(self, server_status: ServerStatus):
+    def __init__(
+            self,
+            server_status: ServerStatus,
+            completely_persistent_process_queue: Queue,
+            ack_process_queue: Queue
+    ):
         self._server_status = server_status
 
-        self._queue_memory = QueueMemory()  # 定义消息队列内存
-        self._stat_memory = StatMemory()  # 统计内存
-        self._queue_ack_memory = TaskAckMemory()  # 定义消息队列应答内存
+        self._queue_memory = QueueMemory()
+        self._stat_memory = StatMemory()
+        self._queue_ack_memory = TaskAckMemory()
 
+        self._completely_persistent_process_queue = completely_persistent_process_queue
+        self._ack_process_queue = ack_process_queue
+
+    def get_memory(self):
+        return self._queue_memory, self._queue_ack_memory
+
+    def init_server_socket(self):
         self._sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        self._sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)  # 设置IP地址复用
+        self._sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
         self._sock.bind((self._server_status.get_host(), self._server_status.get_port()))
-        self._sock.listen(self._server_status.get_max_conn())  # 监听并设置最大连接数
+        self._sock.listen(self._server_status.get_max_conn())
 
         plat = platform.platform()
 
         if plat.startswith('Linux'):
-            self._init_server_socket()
+            self._sock.setblocking(False)
+            self._timeout = self._server_status.get_timeout()
+            self._epoll = select.epoll()
+            self._epoll.register(self._sock.fileno(), select.EPOLLIN)
+            self._fd_to_handler = dict()  # 文件描述符对应socket
 
-    def _init_server_socket(self):
-        self._sock.setblocking(False)  # 服务设置非阻塞
-        self._timeout = self._server_status.get_timeout()  # 超时时间
-        self._epoll = select.epoll()  # 创建epoll事件对象，后续要监控的事件添加到其中
-        self._epoll.register(self._sock.fileno(), select.EPOLLIN)  # 注册服务监听文件描述符到等待读事件集合
-        self._fd_to_handler = dict()  # 文件描述符对应socket
-
-        self._fd_to_handler[self._fileno()] = self
+            self._fd_to_handler[self._fileno()] = self
 
     def serv_forever(self):
         if platform.platform().startswith('Linux'):
@@ -58,13 +68,15 @@ class Server:
         while True:
             client_sock, addr = self._sock.accept()
             handler = Handler(client_sock, addr, self._queue_memory,
-                              self._queue_ack_memory, self._stat_memory, self._server_status)
+                              self._queue_ack_memory, self._stat_memory,
+                              self._server_status, self._completely_persistent_process_queue,
+                              self._ack_process_queue)
             Thread(target=handler.handle_thread_mode_read).start()
 
     def _epoll_mode(self):
         while True:
             logging.info("等待活动连接")
-            events = self._epoll.poll(self._timeout)  # 轮询注册的事件集合，返回值为[(文件句柄，对应的事件)，(...),....]
+            events = self._epoll.poll(self._timeout)
             if not events:
                 logging.info("epoll超时无活动连接，重新轮询")
             else:
@@ -95,7 +107,8 @@ class Server:
         self._epoll.register(conn.fileno(), select.EPOLLIN)  # 注册新连接fd到待读事件集合
         self._fd_to_handler[conn.fileno()] = Handler(conn, addr, self._queue_memory,
                                                      self._queue_ack_memory, self._stat_memory,
-                                                     self._server_status)
+                                                     self._server_status, self._completely_persistent_process_queue,
+                                                     self._ack_process_queue)
 
     def _close_event(self, fd):
         logging.info('client close')

@@ -13,16 +13,45 @@
     <button class="logout">退出</button>
 </div>
 <div class="content">
+    <span class="now"></span>
     <button class="create_queue">创建队列</button>
     <table class="stat_infor" border="1">
     </table>
 </div>
-<div class="footer">
+<div class="footer"></div>
 
+<div class="task_ids">
+    <table border="1">
+        <tr class="task">
+            <th>队列</th>
+            <th>任务ID</th>
+            <th>数据</th>
+            <th>时间</th>
+            <th>删除</th>
+        </tr>
+
+        <tr class="pag">
+            <td>总页数：<span class="total_num">0</span></td>
+            <td>当前页：<span class="current_page">1</span></td>
+            <td><button class="refresh">刷新</button></td>
+            <td><button class="pre_page">上一页</button></td>
+            <td><button class="next_page">下一页</button></td>
+        </tr>
+    </table>
 </div>
+
+<div class="task_ids_ct" title="未确认的任务">
+    <
+</div>
+
+<div class="decode_data">
+    <textarea readonly="true"></textarea>
+    <span class="_message_id"></span><button class="close">关闭</button>
+</div>
+
 <script src={{url_for("static", filename="main.js")}}></script>
 
-<audio controls="controls" autoplay="autoplay">
+<audio controls="controls">
     <source src={{url_for('static', filename="原声带-醉饮千山.mp3")}}/>
 </audio>
 </body>
