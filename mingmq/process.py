@@ -51,7 +51,7 @@ class CompletelyPersistentProcess:
 
         total_pages = self._completely_persistent_process_db.total_num()[0][0]
 
-        method_name = 'send_data_to_queue'
+        method_name = 'restore_send_message'
         page = 1
         filter = []
         while page <= total_pages:
@@ -63,7 +63,7 @@ class CompletelyPersistentProcess:
                         pool.opera('declare_queue', *(queue_name, ))
                         filter.append(queue_name)
 
-                    t = Thread(target=pool.opera, args=(method_name, *(queue_name, message_data)))
+                    t = Thread(target=pool.opera, args=(method_name, *(queue_name, message_data, message_id)))
                     t.start()
                     ts.append(t)
 

@@ -15,7 +15,8 @@ from mingmq.message import (ReqLoginMessage,
                             ReqSendDataToQueueMessage, ReqDeleteQueueMessage,
                             ReqACKMessage, MAX_DATA_LENGTH,
                             ReqGetSpeedMessage, ReqGetStatMessage,
-                            ReqDeleteAckMessageIDMessage, ReqRestoreAckMessageIDMessage)
+                            ReqDeleteAckMessageIDMessage, ReqRestoreAckMessageIDMessage,
+                            ReqRestoreSendMessage)
 from mingmq.utils import to_json
 
 from threading import Lock
@@ -499,6 +500,38 @@ class Client:
         with self._lock:
             req_restore_ack_message_id_message = ReqRestoreAckMessageIDMessage(message_id, queue_name)
             req_pkg = json.dumps(req_restore_ack_message_id_message).encode()
+            send_header = struct.pack('!i', len(req_pkg))
+            self._send(send_header + req_pkg)
+
+            # 接收数据
+            recv_header = self._recv(4)
+            if recv_header:
+                data_size, = struct.unpack('!i', recv_header)
+
+                should_read = min(data_size, MAX_DATA_LENGTH)
+                data = b''
+                while self._connected and len(data) < data_size:
+                    buf = self._recv(should_read)
+                    if buf:
+                        data += buf
+                        if len(data) >= data_size:
+                            msg = to_json(buf)
+                            logging.info('服务器发送过来的消息[%s]。', repr(msg))
+                            return msg
+                    else:
+                        self._connected = False
+                        return False
+            else:
+                self._connected = False
+                return False
+
+    def restore_send_message(self, queue_name, message_data, message_id):
+        """
+        恢复消费者未消费的任务
+        """
+        with self._lock:
+            restore_send_message = ReqRestoreSendMessage(queue_name, message_id, message_data)
+            req_pkg = json.dumps(restore_send_message).encode()
             send_header = struct.pack('!i', len(req_pkg))
             self._send(send_header + req_pkg)
 

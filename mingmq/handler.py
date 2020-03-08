@@ -162,8 +162,25 @@ class Handler:
             self._delete_ack_message_id_queue_name(msg)
         elif _type == MESSAGE_TYPE['RESTORE_ACK_MESSAGE_ID']:
             self._restore_ack_message_id(msg)
+        elif _type == MESSAGE_TYPE['RESTORE_SEND_MESSAGE']:
+            self._restore_send_message(msg)
         else:
             self._not_found(msg)
+
+    def _restore_send_message(self, msg):
+        if self._data_wrong('_restore_ack_message_id', ('message_id', 'queue_name', 'message_data'), msg) is not False:
+            queue_name = msg['queue_name']
+            # message_id = msg['message_id']
+            message_data = msg['message_data']
+
+            if self._queue_memory.put(queue_name, message_data):
+                res_msg = ResMessage(MESSAGE_TYPE['RESTORE_SEND_MESSAGE'], SUCCESS, [])
+                res_pkg = json.dumps(res_msg).encode()
+                self._send_data(res_pkg)
+            else:
+                res_msg = ResMessage(MESSAGE_TYPE['RESTORE_SEND_MESSAGE'], FAIL, [])
+                res_pkg = json.dumps(res_msg).encode()
+                self._send_data(res_pkg)
 
     def _restore_ack_message_id(self, msg):
         if self._data_wrong('_restore_ack_message_id', ('message_id', 'queue_name'), msg) is not False:

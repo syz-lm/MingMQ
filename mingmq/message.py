@@ -21,6 +21,7 @@ MESSAGE_TYPE = {
     'GET_STAT': 12,  # 获取所有统计数据
     'DELETE_ACK_MESSAGE_ID': 13, # 删除ack内存中指定的message_id内存
     'RESTORE_ACK_MESSAGE_ID': 14, # 从磁盘文件恢复ack message_id一般用于服务器重启时重新加载内存
+    'RESTORE_SEND_MESSAGE': 15, # 恢复消费者未消费的任务
 }
 
 # 数据最大长度
@@ -224,6 +225,21 @@ class ReqSendDataToQueueMessage(dict):
         super().__init__({
             'type': self.type,
             'queue_name': self.queue_name,
+            'message_data': self.message_data
+        })
+
+
+class ReqRestoreSendMessage(dict):
+    def __init__(self, queue_name, message_id, message_data):
+        self.type = MESSAGE_TYPE['RESTORE_SEND_MESSAGE']
+        self.queue_name = queue_name
+        self.message_id = message_id
+        self.message_data = message_data
+
+        super().__init__({
+            'type': self.type,
+            'queue_name': self.queue_name,
+            'message_id': self.message_id,
             'message_data': self.message_data
         })
 
