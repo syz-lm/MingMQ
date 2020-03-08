@@ -59,7 +59,7 @@ class Pool:
     def release(self):
         for conn in self._que:
             try:
-                conn.close()
+                if conn: conn.close()
             except OSError as e:
                 print(e)
 
@@ -75,7 +75,7 @@ class Pool:
             print(traceback.format_exc())
             try:
                 conn.close()
-            except OSError:
+            except Exception:
                 print(traceback.format_exc())
             conn = None
         finally:
