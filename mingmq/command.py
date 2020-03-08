@@ -41,7 +41,11 @@ def main():
                         help='输入服务器确认消息文件名，默认/var/mingmq/completely_persistent_process_db_file.db(windows系统下为C:\mingmq\completely_persistent_process_db_file.db)')
 
     flags = parser.parse_args()
-    _read_command_line(flags)
+    try:
+        _read_command_line(flags)
+    except KeyboardInterrupt:
+        import traceback
+        print(traceback.format_exc())
 
 
 def _read_command_line(flags):
@@ -109,23 +113,23 @@ def _read_command_line(flags):
 
     time.sleep(5)
 
-    ackp = AckProcess(bd['ACK_PROCESS_DB_FILE'], bd['HOST'], bd['PORT'],
-                      bd['USER_NAME'], bd['PASSWD'], ack_process_queue)
-
-    ack_process = Process(target=ackp.serv_forever)
-    ack_process.start()
-
-
-    cpp = CompletelyPersistentProcess(bd['COMPLETELY_PERSISTENT_PROCESS_DB_FILE'],
-                                      completely_persistent_process_queue,
-                                      bd['HOST'], bd['PORT'],
-                                      bd['USER_NAME'], bd['PASSWD'])
-    completely_persistent_process = Process(target=cpp.serv_forever)
-    completely_persistent_process.start()
-
+    # ackp = AckProcess(bd['ACK_PROCESS_DB_FILE'], bd['HOST'], bd['PORT'],
+    #                   bd['USER_NAME'], bd['PASSWD'], ack_process_queue)
+    #
+    # ack_process = Process(target=ackp.serv_forever)
+    # ack_process.start()
+    #
+    #
+    # cpp = CompletelyPersistentProcess(bd['COMPLETELY_PERSISTENT_PROCESS_DB_FILE'],
+    #                                   completely_persistent_process_queue,
+    #                                   bd['HOST'], bd['PORT'],
+    #                                   bd['USER_NAME'], bd['PASSWD'])
+    # completely_persistent_process = Process(target=cpp.serv_forever)
+    # completely_persistent_process.start()
+    #
     mq_process.join()
-    ack_process.join()
-    completely_persistent_process.join()
+    # ack_process.join()
+    # completely_persistent_process.join()
 
 
 if __name__ == '__main__':

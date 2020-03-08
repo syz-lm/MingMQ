@@ -54,7 +54,7 @@ class Pool:
 
     def back_conn(self, conn):
         with Pool._LOCK:
-            conn.close()
+            self._que.append(conn)
 
     def release(self):
         for conn in self._que:
