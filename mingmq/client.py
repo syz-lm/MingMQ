@@ -74,7 +74,7 @@ class Pool:
         except Exception:
             print(traceback.format_exc())
             try:
-                conn.close()
+                if conn: conn.close()
             except Exception:
                 print(traceback.format_exc())
             conn = None

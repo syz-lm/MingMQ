@@ -174,7 +174,9 @@ class Handler:
             # message_id = msg['message_id']
             message_data = msg['message_data']
 
-            if self._queue_memory.put(queue_name, message_data):
+            task = Task(message_data)
+
+            if self._queue_memory.put(queue_name, task):
                 res_msg = ResMessage(MESSAGE_TYPE['RESTORE_SEND_MESSAGE'], SUCCESS, [])
                 res_pkg = json.dumps(res_msg).encode()
                 self._send_data(res_pkg)
