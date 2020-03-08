@@ -395,6 +395,13 @@ class Handler:
             queue_name = msg['queue_name']
             if self._queue_memory.clear(queue_name) and \
                     self._task_ack_memory.clear(queue_name):
+
+                pcppdqm = PipeCompletelyPersistentProcessDeleteQueueMessage(queue_name)
+                self._completely_persistent_process_queue.put_nowait(pcppdqm)
+
+                pdqnm = PipeDeleteQueueNoackMessage(queue_name)
+                self._ack_process_queue.put_nowait(pdqnm)
+
                 res_msg = ResMessage(MESSAGE_TYPE['DECLARE_QUEUE'], SUCCESS, [])
                 res_pkg = json.dumps(res_msg).encode()
                 self._send_data(res_pkg)
