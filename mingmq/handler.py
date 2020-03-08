@@ -7,6 +7,7 @@ import platform
 import socket
 import struct
 import time
+import traceback
 from multiprocessing import Queue
 
 if platform.platform().startswith('Linux'):
@@ -446,9 +447,13 @@ class Handler:
 
     def _send_data(self, data):
         if self._connected:
-            header = struct.pack('!i', len(data))
-            logging.info('发送给客户端[%s]的消息为: %s', self._addr, str(header + data)[:100])
-            self._sock.sendall(header + data)
+            try:
+                header = struct.pack('!i', len(data))
+                logging.info('发送给客户端[%s]的消息为: %s', self._addr, str(header + data)[:100])
+                self._sock.sendall(header + data)
+            except Exception:
+                print(traceback.format_exc())
+                self._connected = False
 
     def _has_loggin(self):
         if self._session_id is not None: return True
