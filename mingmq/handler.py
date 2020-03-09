@@ -104,7 +104,7 @@ class Handler:
                 self._connected = False
 
     def _handle_write(self):
-        if self._connected and self._ok:
+        if self.is_connected() and self._ok:
             self._deal_message(self._buf)
             self._ok = False
             self._buf = b''

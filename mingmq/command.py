@@ -2,7 +2,7 @@ import argparse
 import platform
 import logging
 # logging.basicConfig(level=logging.INFO)
-logging.basicConfig(level = logging.ERROR, format = '%(levelname)s:%(asctime)s:%(name)s[%(message)s]')
+logging.basicConfig(level = logging.INFO, format = '%(levelname)s:%(asctime)s:%(name)s[%(message)s]')
 
 from multiprocessing import Queue, Process, freeze_support
 import json
@@ -130,8 +130,6 @@ def _read_command_line(flags):
     completely_persistent_process.start()
 
     mq_process.join()
-    completely_persistent_process.join()
-    ack_process.join()
 
 
 if __name__ == '__main__':

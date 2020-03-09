@@ -2,6 +2,7 @@
 
 import logging
 import traceback
+import math
 
 from multiprocessing import Queue
 from mingmq.db import AckProcessDB, CompletelyPersistentProcessDB
@@ -11,6 +12,7 @@ from mingmq.message import FAIL
 from mingmq.server import Server
 from mingmq.client import Pool
 from threading import Thread
+from multiprocessing import Process
 
 
 
@@ -47,40 +49,55 @@ class CompletelyPersistentProcess:
         client.close()
 
     def _load_send_db_memory(self):
-        self.logger.debug('正在恢复数据send。')
-        pool = Pool(self._client_host, self._client_port, self._client_user, self._client_passwd, 100)
-
-        total_pages = self._completely_persistent_process_db.total_num()[0][0]
-
-        method_name = 'restore_send_message'
-        page = 1
-        filter = []
-        while page <= total_pages:
-            try:
-                ts = []
-                for row in self._completely_persistent_process_db.pagnation_page(page):
-                    message_id, queue_name, message_data, pub_date = row
-                    if queue_name not in filter:
-                        pool.opera('declare_queue', *(queue_name, ))
-                        filter.append(queue_name)
-
-                    t = Thread(target=pool.opera, args=(method_name, *(queue_name, message_data, message_id)))
-                    t.start()
-                    ts.append(t)
-
-                for t in ts: t.join()
-                page += 1
-            except Exception:
-                self.logger.error(traceback.format_exc())
         try:
-            pool.release()
+            self.logger.debug('正在恢复数据send。')
+            pool = Pool(self._client_host, self._client_port, self._client_user, self._client_passwd, 100)
+
+            result = self._completely_persistent_process_db.total_num()
+            total_pages = 0
+            if result:
+                try:
+                    total_pages = result[0][0]
+                    total_pages = math.ceil(total_pages / 100)
+                except:
+                    total_pages = 0
+                    self.logger.error(traceback.format_exc())
+
+            method_name = 'restore_send_message'
+            page = 1
+            filter = []
+            while page <= total_pages:
+                try:
+                    ts = []
+                    rows = self._completely_persistent_process_db.pagnation_page(page)
+                    if rows:
+                        for row in rows:
+                            message_id, queue_name, message_data, pub_date = row
+                            if queue_name not in filter:
+                                pool.opera('declare_queue', *(queue_name, ))
+                                filter.append(queue_name)
+
+                            t = Thread(target=pool.opera, args=(method_name, *(queue_name, message_data, message_id)))
+                            t.start()
+                            ts.append(t)
+
+                        for t in ts: t.join()
+
+                    page += 1
+                except Exception:
+                    self.logger.error(traceback.format_exc())
+        except:
+            self.logger.error(traceback.format_exc())
+        try:
+            if pool: pool.release()
+            self.logger.info('连接已释放完毕，剩余连接：%s。', repr(pool.all()))
         except Exception:
             self.logger.error(traceback.format_exc())
 
     def serv_forever(self):
         self.logger.debug('CompletelyPersistentProcess 正在启动')
 
-        Thread(target=self._load_send_db_memory).start()
+        Process(target=self._load_send_db_memory).start()
 
         while True:
             try:
@@ -200,31 +217,45 @@ class AckProcess:
         self._test_client()
 
     def _load_send_db_memory(self):
-        self.logger.debug('正在恢复数据ack。')
-        pool = Pool(self._client_host, self._client_port, self._client_user, self._client_passwd, 100)
+        try:
+            self.logger.debug('正在恢复数据ack。')
+            pool = Pool(self._client_host, self._client_port, self._client_user, self._client_passwd, 100)
 
-        total_pages = self._ack_process_db.total_num()[0][0]
-        method_name = 'restore_ack_message_id'
-        page = 1
-        filter = []
-        while page <= total_pages:
+            result = self._ack_process_db.total_num()
+            total_pages = 0
             try:
-                ts = []
-                for row in self._ack_process_db.pagnation_page(page):
-                    message_id, queue_name, message_data, pub_date = row
-                    if queue_name not in filter:
-                        pool.opera('declare_queue', *(queue_name, ))
-                    t = Thread(target=pool.opera, args=(method_name, *(message_id, queue_name)))
-                    t.start()
-                    ts.append(t)
-
-                for t in ts: t.join()
-                page += 1
-            except Exception:
+                total_pages = result[0][0]
+                total_pages = math.ceil(total_pages / 100)
+            except:
                 self.logger.error(traceback.format_exc())
+                total_pages = 0
+
+            method_name = 'restore_ack_message_id'
+            page = 1
+            filter = []
+            while page <= total_pages:
+                try:
+                    ts = []
+                    rows = self._ack_process_db.pagnation_page(page)
+                    if rows:
+                        for row in rows:
+                            message_id, queue_name, message_data, pub_date = row
+                            if queue_name not in filter:
+                                pool.opera('declare_queue', *(queue_name, ))
+                            t = Thread(target=pool.opera, args=(method_name, *(message_id, queue_name)))
+                            t.start()
+                            ts.append(t)
+
+                        for t in ts: t.join()
+                    page += 1
+                except Exception:
+                    self.logger.error(traceback.format_exc())
+        except:
+            self.logger.error(traceback.format_exc())
 
         try:
-            pool.release()
+            if pool: pool.release()
+            self.logger.info('连接已释放完毕，剩余连接：%s。', repr(pool.all()))
         except Exception:
             self.logger.error(traceback.format_exc())
 
@@ -245,7 +276,7 @@ class AckProcess:
 
     def serv_forever(self):
         self.logger.debug('AckProcess 正在启动')
-        Thread(target=self._load_send_db_memory).start()
+        Process(target=self._load_send_db_memory).start()
 
         while True:
             try:
@@ -289,7 +320,6 @@ class AckProcess:
         self._ack_process_db.delete_by_message_id(message_id)
 
     def _delete_queue_noack(self, msg):
-        self.logger.debug(1)
         if 'queue_name' not in msg:
             self.logger.error('错误_get1：msg: %s', repr(msg)[:100])
             return

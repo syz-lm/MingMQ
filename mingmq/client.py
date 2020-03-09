@@ -97,6 +97,9 @@ class Pool:
         finally:
             if conn: self.back_conn(conn)
 
+    def all(self):
+        return [i for i in self._que]
+
 
 class Client:
     """
