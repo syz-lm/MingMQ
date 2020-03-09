@@ -1,8 +1,8 @@
 """
 客户端启动测试
 """
-import logging
-from threading import Thread
+import logging, time
+from threading import Thread, active_count
 
 from mingmq.client import Client
 
@@ -64,29 +64,31 @@ def main(tsn, queue_name, data):
         else:
             clis.append(init_cli(False, queue_name))
 
-    ts = []
-    for cli in clis:
-        t = Thread(target=send, args=(cli, queue_name, data))
-        t.start()
-        ts.append(t)
 
-    for t in ts: t.join()
+    i = 0
+    while i < len(clis):
+        if active_count() <= 100:
+            t = Thread(target=send, args=(clis[i], queue_name, data))
+            t.start()
+            i += 1
+        else:
+            time.sleep(2)
 
-    # ts = []
-    # for cli in clis:
-    #     t = Thread(target=get, args=(cli,))
-    #     t.start()
-    #     ts.append(t)
-    #
-    # for t in ts: t.join()
+    i = 0
+    while i < len(clis):
+        if active_count() <= 100:
+            t = Thread(target=get, args=(clis[i],))
+            t.start()
+            i += 1
+        else:
+            time.sleep(2)
 
     for cli in clis:
         close(cli)
 
 
-tsn = 5000
-queue_names = ['web_page', 'word']
-datas = [HTML, 'hello teacher']
+tsn = 50000
+queue_names = ['word']
+datas = ['hello teacher']
 
 main(tsn, queue_names[0], datas[0])
-main(tsn, queue_names[1], datas[1])
