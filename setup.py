@@ -15,7 +15,8 @@ setup(
     install_requires=[
         'flask',
         'flask_httpauth',
-        'netifaces'
+        'netifaces',
+        'gevent'
     ],
     entry_points="""
     [console_scripts]

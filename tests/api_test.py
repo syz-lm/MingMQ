@@ -1,3 +1,5 @@
-from mingmq.api import main
+from mingmq.api import debug, main
+
+# debug()
 
 main()

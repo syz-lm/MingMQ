@@ -11,6 +11,9 @@ from mingmq.client import Pool
 from mingmq.settings import CONFIG_FILE
 from mingmq.db import AckProcessDB
 
+from gevent.pywsgi import WSGIServer
+from gevent import monkey
+
 
 def init_mmcli_config():
     with open(CONFIG_FILE, 'r') as f:
@@ -191,8 +194,21 @@ def delete_ack_message():
     if result: return result
 
 
-def main():
+def debug():
     try:
         APP.run(host='0.0.0.0', port=15674)
     except: pass
     finally: POOL.release()
+
+
+def main():
+    global APP
+    try:
+        monkey.patch_all()
+
+        http_server = WSGIServer(('0.0.0.0', int(15674)), APP)
+        http_server.serve_forever()
+    except Exception as e:
+        logging.error(e)
+    finally:
+        POOL.release()
