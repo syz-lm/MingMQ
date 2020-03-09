@@ -248,11 +248,12 @@ class SyncQueueMemory:
             return None
 
     def get_stat(self):
-        tmp = dict()
-        for k, v in self._map.items():
-            tmp[k] = [v.qsize(), get_size(v)]
+        with _LOCK:
+            tmp = dict()
+            for k, v in self._map.items():
+                tmp[k] = [v.qsize(), get_size(v)]
 
-        return tmp
+            return tmp
 
 
 class SyncTaskAckMemory:
@@ -333,11 +334,12 @@ class SyncTaskAckMemory:
             return False
 
     def get_stat(self):
-        tmp = dict()
-        for k, v in self._map.items():
-            tmp[k] = [len(v), get_size(v)]
+        with _LOCK:
+            tmp = dict()
+            for k, v in self._map.items():
+                tmp[k] = [len(v), get_size(v)]
 
-        return tmp
+            return tmp
 
 
 class StatMemory:

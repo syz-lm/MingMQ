@@ -21,10 +21,10 @@ from mingmq.status import ServerStatus
 
 class Server:
     def __init__(
-            self,
-            server_status: ServerStatus,
-            completely_persistent_process_queue: Queue,
-            ack_process_queue: Queue
+        self,
+        server_status: ServerStatus,
+        completely_persistent_process_queue: Queue,
+        ack_process_queue: Queue
     ):
         self._server_status = server_status
 

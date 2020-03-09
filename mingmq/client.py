@@ -13,17 +13,21 @@ from mingmq.message import (ReqLoginMessage,
                             SUCCESS, ReqLogoutMessage, ReqDeclareQueueMessage,
                             ReqGetDataFromQueueMessage, ReqClearQueueMessage,
                             ReqSendDataToQueueMessage, ReqDeleteQueueMessage,
-                            ReqACKMessage, MAX_DATA_LENGTH,
+                            ReqACKMessage, MAX_DATA_LENGTH, ReqPingMessage,
                             ReqGetSpeedMessage, ReqGetStatMessage,
                             ReqDeleteAckMessageIDMessage, ReqRestoreAckMessageIDMessage,
                             ReqRestoreSendMessage)
 from mingmq.utils import to_json
+from mingmq.error import ClientPoolEmpty
 
 from threading import Lock
 
 
 class Pool:
     _LOCK = Lock()
+
+    logger = logging.getLogger('Pool')
+
 
     def __init__(self, host, port, user_name, passwd, size):
         self._host = host
@@ -35,6 +39,8 @@ class Pool:
 
         self._que = deque()
 
+        self.init_pool()
+
     def init_pool(self):
         for i in range(self._size):
             cli = Client(self._host, self._port)
@@ -45,10 +51,16 @@ class Pool:
         with Pool._LOCK:
             try:
                 if len(self._que) != 0:
-                    return self._que.popleft()
+                    conn = self._que.popleft()
+                    if conn.ping() is False:
+                        self.logger.debug("conn ping不通，或者为None: %s", repr(conn))
+                        raise Exception("conn ping不通，或者为None")
+                    return conn
                 else:
-                    raise Exception('连接池已空')
-            except:
+                    raise ClientPoolEmpty('连接池已空')
+            except ClientPoolEmpty as e:
+                self.logger.error(str(e))
+
                 self.init_pool()
                 return self._que.popleft()
 
@@ -60,8 +72,10 @@ class Pool:
         for conn in self._que:
             try:
                 if conn: conn.close()
-            except OSError as e:
-                print(e)
+            except Exception:
+                self.logger.error(traceback.format_exc())
+
+        self._que.clear()
 
     def opera(self, method_name, *args):
         conn = None
@@ -70,13 +84,15 @@ class Pool:
             callback = getattr(conn, method_name)
             result = callback(*args)
             if result: return result
-            raise
+            self.logger.debug('返回数据：%s', repr(result))
+            raise Exception('返回数据为False，或为None')
         except Exception:
-            print(traceback.format_exc())
+            self.logger.error(traceback.format_exc())
             try:
                 if conn: conn.close()
             except Exception:
-                print(traceback.format_exc())
+                self.logger.error(traceback.format_exc())
+
             conn = None
         finally:
             if conn: self.back_conn(conn)
@@ -86,6 +102,9 @@ class Client:
     """
     服务器客户端
     """
+    logger = logging.getLogger('Client')
+
+
     def __init__(self, host, port):
         self._sock = socket.socket()
         self._connected = False
@@ -100,14 +119,15 @@ class Client:
         try:
             self.login(self._user_name, self._passwd)
         except:
-            logging.info('重连失败')
+            self.logger.debug('重连失败')
+            self.logger.error(traceback.format_exc())
 
     def _send(self, data):
         try:
             if self._connected:
                 self._sock.sendall(data)
-        except OSError as e:
-            print(e)
+        except Exception:
+            self.logger.error(traceback.format_exc())
             self._connected = False
 
     def _recv(self, bytes_size):
@@ -118,8 +138,8 @@ class Client:
                     return data
                 else:
                     self._connected = False
-            except OSError as e:
-                print(e)
+            except Exception:
+                self.logger.error(traceback.format_exc())
                 self._connected = False
 
         return None
@@ -159,15 +179,17 @@ class Client:
                         data += buf
                         if len(data) == data_size:
                             msg = to_json(data)
-                            logging.info('服务器发送过来的消息[%s]。', repr(msg))
+                            self.logger.debug('服务器发送过来的消息[%s]。', repr(msg))
                             if msg['status'] == SUCCESS:
                                 self._user_name = user_name
                                 self._passwd = passwd
                             return msg
                     else:
+                        self.logger.error('login数据在接收过程中出现了空字符，当前data:%s', data)
                         self._connected = False
                         return False
             else:
+                self.logger.error('login在发送了请求之后，服务器返回了空字符，当前req_pkg:%s', repr(req_login_msg))
                 self._connected = False
                 return False
 
@@ -194,12 +216,14 @@ class Client:
                         data += buf
                         if len(data) >= data_size:
                             msg = to_json(data)
-                            logging.info('服务器发送过来的消息[%s]。', repr(msg))
+                            self.logger.debug('服务器发送过来的消息[%s]。', repr(msg))
                             return msg
                     else:
+                        self.logger.error('logout数据在接收过程中出现了空字符，当前data:%s', data)
                         self._connected = False
                         return False
             else:
+                self.logger.error('logout在发送了请求之后，服务器返回了空字符，当前req_pkg:%s', repr(req_logout_msg))
                 self._connected = False
                 return False
 
@@ -226,12 +250,16 @@ class Client:
                         data += buf
                         if len(data) >= data_size:
                             msg = to_json(data)
-                            logging.info('服务器发送过来的消息[%s]。', repr(msg))
+                            self.logger.debug('服务器发送过来的消息[%s]。', repr(msg))
                             return msg
                     else:
+                        self.logger.error('declare_queue数据在接收过程中出现了空字符，当前data:%s', data)
+
                         self._connected = False
                         return False
             else:
+                self.logger.error('declare_queue在发送了请求之后，服务器返回了空字符，当前req_pkg:%s', repr(req_declare_queue_msg))
+
                 self._connected = False
                 return False
 
@@ -259,12 +287,16 @@ class Client:
 
                         if len(data) == data_size:
                             msg = to_json(data)
-                            logging.info('服务器发送过来的消息[%s]。', repr(msg))
+                            self.logger.debug('服务器发送过来的消息[%s]。', repr(msg))
                             return msg
                     else:
+                        self.logger.error('get_data_from_queue数据在接收过程中出现了空字符，当前data:%s', data)
+
                         self._connected = False
                         return False
             else:
+                self.logger.error('get_data_from_queue在发送了请求之后，服务器返回了空字符，当前req_pkg:%s', repr(req_get_data_from_queue_msg))
+
                 self._connected = False
                 return False
 
@@ -292,12 +324,16 @@ class Client:
 
                         if len(data) == data_size:
                             msg = to_json(data)
-                            logging.info('服务器发送过来的消息[%s]。', repr(msg))
+                            self.logger.debug('服务器发送过来的消息[%s]。', repr(msg))
                             return msg
                     else:
+                        self.logger.error('send_data_to_queue数据在接收过程中出现了空字符，当前data:%s', data)
+
                         self._connected = False
                         return False
             else:
+                self.logger.error('send_data_to_queue在发送了请求之后，服务器返回了空字符，当前req_pkg:%s', repr(rsdfqm))
+
                 self._connected = False
                 return False
 
@@ -324,12 +360,16 @@ class Client:
                         data += buf
                         if len(data) >= data_size:
                             msg = to_json(buf)
-                            logging.info('服务器发送过来的消息[%s]。', repr(msg))
+                            self.logger.debug('服务器发送过来的消息[%s]。', repr(msg))
                             return msg
                     else:
+                        self.logger.error('ack_message数据在接收过程中出现了空字符，当前data:%s', data)
+
                         self._connected = False
                         return False
             else:
+                self.logger.error('ack_message在发送了请求之后，服务器返回了空字符，当前req_pkg:%s', repr(req_ack_msg))
+
                 self._connected = False
                 return False
 
@@ -356,12 +396,16 @@ class Client:
                         data += buf
                         if len(data) >= data_size:
                             msg = to_json(buf)
-                            logging.info('服务器发送过来的消息[%s]。', repr(msg))
+                            self.logger.debug('服务器发送过来的消息[%s]。', repr(msg))
                             return msg
                     else:
+                        self.logger.error('del_queue数据在接收过程中出现了空字符，当前data:%s', data)
+
                         self._connected = False
                         return False
             else:
+                self.logger.error('del_queue在发送了请求之后，服务器返回了空字符，当前req_pkg:%s', repr(req_ack_msg))
+
                 self._connected = False
                 return False
 
@@ -388,12 +432,16 @@ class Client:
                         data += buf
                         if len(data) >= data_size:
                             msg = to_json(buf)
-                            logging.info('服务器发送过来的消息[%s]。', repr(msg))
+                            self.logger.debug('服务器发送过来的消息[%s]。', repr(msg))
                             return msg
                     else:
+                        self.logger.error('clear_queue数据在接收过程中出现了空字符，当前data:%s', data)
+
                         self._connected = False
                         return False
             else:
+                self.logger.error('clear_queue在发送了请求之后，服务器返回了空字符，当前req_pkg:%s', repr(req_ack_msg))
+
                 self._connected = False
                 return False
 
@@ -420,12 +468,16 @@ class Client:
                         data += buf
                         if len(data) >= data_size:
                             msg = to_json(buf)
-                            logging.info('服务器发送过来的消息[%s]。', repr(msg))
+                            self.logger.debug('服务器发送过来的消息[%s]。', repr(msg))
                             return msg
                     else:
+                        self.logger.error('get_speed数据在接收过程中出现了空字符，当前data:%s', data)
+
                         self._connected = False
                         return False
             else:
+                self.logger.error('get_speed在发送了请求之后，服务器返回了空字符，当前req_pkg:%s', repr(req_ack_msg))
+
                 self._connected = False
                 return False
 
@@ -452,12 +504,16 @@ class Client:
                         data += buf
                         if len(data) >= data_size:
                             msg = to_json(buf)
-                            logging.info('服务器发送过来的消息[%s]。', repr(msg))
+                            self.logger.debug('服务器发送过来的消息[%s]。', repr(msg))
                             return msg
                     else:
+                        self.logger.error('get_stat数据在接收过程中出现了空字符，当前data:%s', data)
+
                         self._connected = False
                         return False
             else:
+                self.logger.error('get_stat在发送了请求之后，服务器返回了空字符，当前req_pkg:%s', repr(req_ack_msg))
+
                 self._connected = False
                 return False
 
@@ -484,12 +540,16 @@ class Client:
                         data += buf
                         if len(data) >= data_size:
                             msg = to_json(buf)
-                            logging.info('服务器发送过来的消息[%s]。', repr(msg))
+                            self.logger.debug('服务器发送过来的消息[%s]。', repr(msg))
                             return msg
                     else:
+                        self.logger.error('delete_ack_message_id_queue_name数据在接收过程中出现了空字符，当前data:%s', data)
+
                         self._connected = False
                         return False
             else:
+                self.logger.error('delete_ack_message_id_queue_name在发送了请求之后，服务器返回了空字符，当前req_pkg:%s', repr(req_delete_ack_message_id))
+
                 self._connected = False
                 return False
 
@@ -516,12 +576,16 @@ class Client:
                         data += buf
                         if len(data) >= data_size:
                             msg = to_json(buf)
-                            logging.info('服务器发送过来的消息[%s]。', repr(msg))
+                            self.logger.debug('服务器发送过来的消息[%s]。', repr(msg))
                             return msg
                     else:
+                        self.logger.error('restore_ack_message_id数据在接收过程中出现了空字符，当前data:%s', data)
+
                         self._connected = False
                         return False
             else:
+                self.logger.error('restore_ack_message_id在发送了请求之后，服务器返回了空字符，当前req_pkg:%s', repr(req_restore_ack_message_id_message))
+
                 self._connected = False
                 return False
 
@@ -548,11 +612,48 @@ class Client:
                         data += buf
                         if len(data) >= data_size:
                             msg = to_json(buf)
-                            logging.info('服务器发送过来的消息[%s]。', repr(msg))
+                            self.logger.debug('服务器发送过来的消息[%s]。', repr(msg))
                             return msg
                     else:
+                        self.logger.error('restore_send_message数据在接收过程中出现了空字符，当前data:%s', data)
+
                         self._connected = False
                         return False
             else:
+                self.logger.error('restore_send_message在发送了请求之后，服务器返回了空字符，当前req_pkg:%s', repr(restore_send_message))
+
+                self._connected = False
+                return False
+
+    def ping(self):
+        with self._lock:
+            req_ping_message = ReqPingMessage()
+            req_pkg = json.dumps(req_ping_message).encode()
+            send_header = struct.pack('!i', len(req_pkg))
+            self._send(send_header + req_pkg)
+
+            # 接收数据
+            recv_header = self._recv(4)
+            if recv_header:
+                data_size, = struct.unpack('!i', recv_header)
+
+                should_read = min(data_size, MAX_DATA_LENGTH)
+                data = b''
+                while self._connected and len(data) < data_size:
+                    buf = self._recv(should_read)
+                    if buf:
+                        data += buf
+                        if len(data) >= data_size:
+                            msg = to_json(buf)
+                            self.logger.debug('服务器发送过来的消息[%s]。', repr(msg))
+                            return msg
+                    else:
+                        self.logger.error('ping数据在接收过程中出现了空字符，当前data:%s', data)
+
+                        self._connected = False
+                        return False
+            else:
+                self.logger.error('ping在发送了请求之后，服务器返回了空字符，当前req_pkg:%s', repr(req_ping_message))
+
                 self._connected = False
                 return False

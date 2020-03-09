@@ -2,7 +2,6 @@
 
 import logging
 import traceback
-import time
 
 from multiprocessing import Queue
 from mingmq.db import AckProcessDB, CompletelyPersistentProcessDB
@@ -14,7 +13,10 @@ from mingmq.client import Pool
 from threading import Thread
 
 
+
 class CompletelyPersistentProcess:
+    logger = logging.getLogger('CompletelyPersistentProcess')
+
     def __init__(
         self,
         completely_persistent_process_db_file,
@@ -34,8 +36,6 @@ class CompletelyPersistentProcess:
 
         self._test_client()
 
-        self._load_send_db_memory()
-
     def _test_client(self):
         client = Client(self._client_host, self._client_port)
         msg = client.login(self._client_user, self._client_passwd)
@@ -47,7 +47,8 @@ class CompletelyPersistentProcess:
         client.close()
 
     def _load_send_db_memory(self):
-        pool = Pool(self._client_host, self._client_port, self._client_user, self._client_passwd, 25)
+        self.logger.debug('正在恢复数据send。')
+        pool = Pool(self._client_host, self._client_port, self._client_user, self._client_passwd, 100)
 
         total_pages = self._completely_persistent_process_db.total_num()[0][0]
 
@@ -70,30 +71,33 @@ class CompletelyPersistentProcess:
                 for t in ts: t.join()
                 page += 1
             except Exception:
-                print(traceback.format_exc())
+                self.logger.error(traceback.format_exc())
         try:
             pool.release()
         except Exception:
-            print(traceback.format_exc())
+            self.logger.error(traceback.format_exc())
 
     def serv_forever(self):
-        print('CompletelyPersistentProcess 正在启动')
+        self.logger.debug('CompletelyPersistentProcess 正在启动')
+
+        Thread(target=self._load_send_db_memory).start()
+
         while True:
             try:
                 msg = self._completely_persistent_process_queue.get()
                 self._dispatch(msg)
             except Exception:
-                print(traceback.format_exc())
+                self.logger.error(traceback.format_exc())
 
     def _dispatch(self, msg):
         if 'type' not in msg:
-            logging.info('错误_dispatch1：msg: %s', repr(msg)[:100])
+            self.logger.error('错误_dispatch1：msg: %s', repr(msg)[:100])
             return
 
         _type = msg['type']
 
         if _type not in COMPLETELY_PERSISTENT_PROCESS_MESSAGE.values():
-            logging.info('错误_dispatch2：msg: %s', repr(msg)[:100])
+            self.logger.error('错误_dispatch2：msg: %s', repr(msg)[:100])
             return
 
         if _type == COMPLETELY_PERSISTENT_PROCESS_MESSAGE['SEND']:
@@ -103,15 +107,15 @@ class CompletelyPersistentProcess:
         elif _type == COMPLETELY_PERSISTENT_PROCESS_MESSAGE['DELETE_QUEUE']:
             self._delete_queue(msg)
         else:
-            logging.info('错误_dispatch2：msg: %s', repr(msg)[:100])
-
+            self.logger.error('错误_dispatch2：msg: %s', repr(msg)[:100])
+            
     def _send(self, msg):
         if 'queue_name' not in msg or \
             'message_data' not in msg or \
                 'message_id' not in msg or \
                     'pub_date' not in msg:
 
-            logging.info('错误_send1：msg: %s', repr(msg)[:100])
+            self.logger.error('错误_send1：msg: %s', repr(msg)[:100])
             return
 
         queue_name = msg['queue_name']
@@ -130,7 +134,7 @@ class CompletelyPersistentProcess:
     def _get(self, msg):
         if 'queue_name' not in msg or \
                 'message_id' not in msg:
-            logging.info('错误_get1：msg: %s', repr(msg)[:100])
+            self.logger.error('错误_get1：msg: %s', repr(msg)[:100])
             return
 
         # queue_name = msg['queue_name']
@@ -140,7 +144,7 @@ class CompletelyPersistentProcess:
 
     def _delete_queue(self, msg):
         if 'queue_name' not in msg:
-            logging.info('错误_delete_queue1：msg: %s', repr(msg)[:100])
+            self.logger.error('错误_delete_queue1：msg: %s', repr(msg)[:100])
             return
 
         queue_name = msg['queue_name']
@@ -171,6 +175,8 @@ class MQProcess:
 
 
 class AckProcess:
+    logger = logging.getLogger('AckProcess')
+    
     def __init__(
             self,
             ack_process_db_file,
@@ -193,10 +199,9 @@ class AckProcess:
 
         self._test_client()
 
-        self._load_send_db_memory()
-
     def _load_send_db_memory(self):
-        pool = Pool(self._client_host, self._client_port, self._client_user, self._client_passwd, 25)
+        self.logger.debug('正在恢复数据ack。')
+        pool = Pool(self._client_host, self._client_port, self._client_user, self._client_passwd, 100)
 
         total_pages = self._ack_process_db.total_num()[0][0]
         method_name = 'restore_ack_message_id'
@@ -216,12 +221,12 @@ class AckProcess:
                 for t in ts: t.join()
                 page += 1
             except Exception:
-                print(traceback.format_exc())
+                self.logger.error(traceback.format_exc())
 
         try:
             pool.release()
         except Exception:
-            print(traceback.format_exc())
+            self.logger.error(traceback.format_exc())
 
     def close(self):
         if self._client:
@@ -239,23 +244,25 @@ class AckProcess:
         client.close()
 
     def serv_forever(self):
-        print('AckProcess 正在启动')
+        self.logger.debug('AckProcess 正在启动')
+        Thread(target=self._load_send_db_memory).start()
+
         while True:
             try:
                 msg = self._ack_process_queue.get()
                 self._dispatch(msg)
             except Exception:
-                print(traceback.format_exc())
+                self.logger.error(traceback.format_exc())
 
     def _dispatch(self, msg):
         if 'type' not in msg:
-            logging.info('错误_dispatch1：msg: %s', repr(msg)[:100])
+            self.logger.error('错误_dispatch1：msg: %s', repr(msg)[:100])
             return
 
         _type = msg['type']
 
         if _type not in ACK_PROCESS_MESSAGE.values():
-            logging.info('错误_dispatch2：msg: %s', repr(msg)[:100])
+            self.logger.error('错误_dispatch2：msg: %s', repr(msg)[:100])
             return
 
         if _type == ACK_PROCESS_MESSAGE['GET']:
@@ -269,11 +276,11 @@ class AckProcess:
         elif _type == ACK_PROCESS_MESSAGE['DELETE_ACK_MESSAGE_ID']:
             self._delete_ack_message_id(msg)
         else:
-            logging.info('错误_dispatch3：msg: %s', repr(msg)[:100])
+            self.logger.error('错误_dispatch3：msg: %s', repr(msg)[:100])
 
     def _delete_ack_message_id(self, msg):
         if 'queue_name' not in msg or 'message_id' not in msg:
-            logging.info('错误_delete_ack_message_id1：msg: %s', repr(msg)[:100])
+            self.logger.error('错误_delete_ack_message_id1：msg: %s', repr(msg)[:100])
             return
 
         # queue_name = msg['queue_name']
@@ -282,8 +289,9 @@ class AckProcess:
         self._ack_process_db.delete_by_message_id(message_id)
 
     def _delete_queue_noack(self, msg):
+        self.logger.debug(1)
         if 'queue_name' not in msg:
-            logging.info('错误_get1：msg: %s', repr(msg)[:100])
+            self.logger.error('错误_get1：msg: %s', repr(msg)[:100])
             return
 
         queue_name = msg['queue_name']
@@ -296,10 +304,10 @@ class AckProcess:
                 'message_data' not in msg or \
                 'pub_date' not in msg:
 
-            logging.info('错误_get1：msg: %s', repr(msg)[:100])
+            self.logger.error('错误_get1：msg: %s', repr(msg)[:100])
             return
 
-        logging.info('get：%s', repr(msg)[:100])
+        self.logger.debug('get：%s', repr(msg)[:100])
 
         message_id = msg['message_id']
         queue_name = msg['queue_name']
@@ -318,10 +326,10 @@ class AckProcess:
                 'queue_name' not in msg or \
                 'pub_date' not in msg:
             # 需要QUEUE_NAME的原因是因为，需要追踪这个MESSAGE_ID是哪个QUEUE_NAME的。
-            logging.info('错误_get1：msg1: %s', repr(msg)[:100])
+            self.logger.error('错误_get1：msg1: %s', repr(msg)[:100])
             return
 
-        logging.info('ack：%s', repr(msg)[:100])
+        self.logger.debug('ack：%s', repr(msg)[:100])
 
         message_id = msg['message_id']
         # queue_name = msg['queue_name']
@@ -330,10 +338,10 @@ class AckProcess:
 
     def _ack_retry(self, msg):
         if 'message_id' not in msg or 'pub_date' not in msg:
-            logging.info('错误_get1：msg1: %s', repr(msg)[:100])
+            self.logger.error('错误_get1：msg1: %s', repr(msg)[:100])
             return
 
-        logging.infor('_ack_retry: msg: %s', repr(msg)[:100])
+        self.logger.debug('_ack_retry: msg: %s', repr(msg)[:100])
 
         # 最多重连3次
         self._client = Client(self._client_host, self._client_port)
@@ -367,7 +375,7 @@ class AckProcess:
         # 重新长时间未确认的任务，失败则重新插入数据库。
         try:
             res_msg = client.send_data_to_queue(queue_name, message_data)
-            logging.info('_ack_retry: 重新发送任务: %s, %s, 服务器返回:%s',
+            self.logger.debug('_ack_retry: 重新发送任务: %s, %s, 服务器返回:%s',
                          repr(queue_name), repr(message_data), repr(res_msg)[:100])
             if res_msg['status'] == FAIL:  # 如果发送失败，重新放到数据库
                 return False
@@ -381,7 +389,7 @@ class AckProcess:
         # TODO
         try:
             res_msg = client.delete_ack_message_id_queue_name(message_id, queue_name)
-            logging.info('_ack_retry: 删除mmserver中的未确认ack内存: %s，%s, mmserver返回:%s',
+            self.logger.debug('_ack_retry: 删除mmserver中的未确认ack内存: %s，%s, mmserver返回:%s',
                          repr(message_id), repr(queue_name), repr(res_msg)[:100])
             if res_msg['status'] == FAIL:  # 如果发送失败，我想我还是写log文件吧。
                 # TODO

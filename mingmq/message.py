@@ -22,6 +22,7 @@ MESSAGE_TYPE = {
     'DELETE_ACK_MESSAGE_ID': 13, # 删除ack内存中指定的message_id内存
     'RESTORE_ACK_MESSAGE_ID': 14, # 从磁盘文件恢复ack message_id一般用于服务器重启时重新加载内存
     'RESTORE_SEND_MESSAGE': 15, # 恢复消费者未消费的任务
+    'PING': 16 # ping
 }
 
 # 数据最大长度
@@ -35,6 +36,15 @@ FAIL = 0
 GET = 0
 SEND = 1
 ACK = 2
+
+
+class ReqPingMessage(dict):
+    def __init__(self):
+        self.type = MESSAGE_TYPE['PING']
+
+        super().__init__({
+            'type': self.type
+        })
 
 
 class ReqRestoreAckMessageIDMessage(dict):

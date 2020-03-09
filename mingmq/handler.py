@@ -27,6 +27,8 @@ from mingmq.status import ServerStatus
 
 
 class Handler:
+    logger = logging.getLogger('Handler')
+    
     def __init__(
             self,
             sock: socket.socket,
@@ -55,6 +57,7 @@ class Handler:
 
         self._ok = False
 
+
     def is_connected(self):
         return self._connected
 
@@ -63,7 +66,7 @@ class Handler:
 
     def close(self):
         self._sock.close()
-        logging.info('客户端[IP %s]已断开。', repr(self._addr))
+        self.logger.debug('客户端[IP %s]已断开。', repr(self._addr))
 
     def _recv(self, size):
         data = None
@@ -72,7 +75,7 @@ class Handler:
         except (ConnectionResetError, OSError) as err:
             # OSError: [WinError 10038] 在一个非套接字上尝试了一个操作。
             # ConnectionResetError 远程主机主动断开了连接
-            logging.info(err)
+            self.logger.error(err)
 
         return data
 
@@ -87,6 +90,7 @@ class Handler:
                 else:
                     self._connected = False
             except:
+                self.logger.error(traceback.format_exc())
                 self._connected = False
         else:
             buf = self._recv(self._should_read)
@@ -126,7 +130,7 @@ class Handler:
             self._connected = False
             return
 
-        logging.info('客户端[IP %s]发来数据转换成JSON对象[%s]。', repr(self._addr), repr(msg)[:100])
+        self.logger.debug('客户端[IP %s]发来数据转换成JSON对象[%s]。', repr(self._addr), repr(msg)[:100])
 
         if msg is not False:  # 如果msg为False则断开连接
             if check_msg(msg) is not False:
@@ -165,8 +169,15 @@ class Handler:
             self._restore_ack_message_id(msg)
         elif _type == MESSAGE_TYPE['RESTORE_SEND_MESSAGE']:
             self._restore_send_message(msg)
+        elif _type == MESSAGE_TYPE['PING']:
+            self._ping()
         else:
             self._not_found(msg)
+
+    def _ping(self):
+        res_msg = ResMessage(MESSAGE_TYPE['PING'], SUCCESS, [])
+        res_pkg = json.dumps(res_msg).encode()
+        self._send_data(res_pkg)
 
     def _restore_send_message(self, msg):
         if self._data_wrong('_restore_ack_message_id', ('message_id', 'queue_name', 'message_data'), msg) is not False:
@@ -254,7 +265,7 @@ class Handler:
                 break
 
         if err > 0:
-            logging.info('%s, 参数错误 %s, 需要参数 %s', opera, msg[:100], args)
+            self.logger.error('%s, 参数错误 %s, 需要参数 %s', opera, msg[:100], args)
 
             res_msg = ResMessage(MESSAGE_TYPE['DATA_WRONG'], FAIL, [])
             res_pkg = json.dumps(res_msg).encode()
@@ -278,6 +289,8 @@ class Handler:
                     res_msg = ResMessage(MESSAGE_TYPE['ACK_MESSAGE'], FAIL, [])
                     res_pkg = json.dumps(res_msg).encode()
                     self._send_data(res_pkg)
+        except:
+            self.logger.error(traceback.format_exc())
         finally:
             self._stat(ACK, queue_name)
 
@@ -299,6 +312,8 @@ class Handler:
                     res_msg = ResMessage(MESSAGE_TYPE['SEND_DATA_TO_QUEUE'], FAIL, [])
                     res_pkg = json.dumps(res_msg).encode()
                     self._send_data(res_pkg)
+        except:
+            self.logger.error(traceback.format_exc())
         finally:
             self._stat(SEND, queue_name)
 
@@ -324,6 +339,8 @@ class Handler:
                     res_msg = ResMessage(MESSAGE_TYPE['GET_DATA_FROM_QUEUE'], FAIL, [task])
                     res_pkg = json.dumps(res_msg).encode()
                     self._send_data(res_pkg)
+        except:
+            self.logger.error(traceback.format_exc())
         finally:
             self._stat(GET, queue_name)
 
@@ -451,10 +468,10 @@ class Handler:
         if self._connected:
             try:
                 header = struct.pack('!i', len(data))
-                logging.info('发送给客户端[%s]的消息为: %s', self._addr, str(header + data)[:100])
+                self.logger.debug('发送给客户端[%s]的消息为: %s', self._addr, str(header + data)[:100])
                 self._sock.sendall(header + data)
             except Exception:
-                print(traceback.format_exc())
+                self.logger.error(traceback.format_exc())
                 self._connected = False
 
     def _has_loggin(self):

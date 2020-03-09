@@ -6,7 +6,7 @@ from threading import Thread
 
 from mingmq.client import Client
 
-logging.basicConfig(level=logging.DEBUG)
+logging.basicConfig(level=logging.ERROR)
 
 HTML = ''
 with open('./test.html', encoding='utf-8') as file_desc:
@@ -17,7 +17,7 @@ def init_cli(first, queue_name):
     """
     客户端测试
     """
-    client = Client('192.168.1.30', 15673)
+    client = Client('localhost', 15673)
 
     client.login('mingmq', 'mm5201314')
 

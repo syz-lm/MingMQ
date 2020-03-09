@@ -1,7 +1,8 @@
 import argparse
 import platform
 import logging
-logging.basicConfig(level=logging.INFO)
+# logging.basicConfig(level=logging.INFO)
+logging.basicConfig(level = logging.ERROR, format = '%(levelname)s:%(asctime)s:%(name)s[%(message)s]')
 
 from multiprocessing import Queue, Process, freeze_support
 import json
@@ -45,29 +46,29 @@ def main():
         _read_command_line(flags)
     except KeyboardInterrupt:
         import traceback
-        print(traceback.format_exc())
+        logging.error(traceback.format_exc())
 
 
 def _read_command_line(flags):
     check_result = check_config(flags)
 
     if check_result == 0:
-        print('FLAGS出现问题。')
+        logging.debug('FLAGS出现问题。')
         return
     elif check_result == 1:
-        print('HOST输入有误。')
+        logging.debug('HOST输入有误。')
         return
     elif check_result == 2:
-        print('PORT输入有误。')
+        logging.debug('PORT输入有误。')
         return
     elif check_result == 3:
-        print('USER_NAME 或者 PASSWD 输入有误。')
+        logging.debug('USER_NAME 或者 PASSWD 输入有误。')
         return
     elif check_result == 4:
-        print('确认消息文件路径错误。')
+        logging.debug('确认消息文件路径错误。')
         return
     elif check_result == 5:
-        print('发送消息文件路径错误。')
+        logging.debug('发送消息文件路径错误。')
         return
 
     bd = dict()
@@ -89,10 +90,10 @@ def _read_command_line(flags):
             # ensure_ascii写中文, indent 格式化json
             bd = json.load(f)
     else:
-        print('您是否要使用上一次使用过的配置来启动服务。')
+        logging.error('您是否要使用上一次使用过的配置来启动服务。')
         return
 
-    print('正在启动，服务器的配置为\nIP/端口:%s:%d, 用户名/密码:%s/%s，'
+    logging.debug('正在启动，服务器的配置为\nIP/端口:%s:%d, 用户名/密码:%s/%s，'
           '最大并发数:%d，超时时间: %d，服务器配置路径: %s，'
           '服务器确认消息文件名: %s，服务器发送消息文件名: %s' %
           (bd['HOST'], bd['PORT'], bd['USER_NAME'], bd['PASSWD'],
@@ -109,15 +110,14 @@ def _read_command_line(flags):
 
     mmserver = MQProcess(server_status, completely_persistent_process_queue, ack_process_queue)
     mq_process = Process(target=mmserver.serv_forever)
+    mq_process.daemon = True
     mq_process.start()
-
     time.sleep(5)
 
     ackp = AckProcess(bd['ACK_PROCESS_DB_FILE'], bd['HOST'], bd['PORT'],
                       bd['USER_NAME'], bd['PASSWD'], ack_process_queue)
 
     ack_process = Process(target=ackp.serv_forever)
-    ack_process.start()
 
 
     cpp = CompletelyPersistentProcess(bd['COMPLETELY_PERSISTENT_PROCESS_DB_FILE'],
@@ -125,11 +125,13 @@ def _read_command_line(flags):
                                       bd['HOST'], bd['PORT'],
                                       bd['USER_NAME'], bd['PASSWD'])
     completely_persistent_process = Process(target=cpp.serv_forever)
+
+    ack_process.start()
     completely_persistent_process.start()
 
     mq_process.join()
-    ack_process.join()
     completely_persistent_process.join()
+    ack_process.join()
 
 
 if __name__ == '__main__':

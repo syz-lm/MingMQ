@@ -87,7 +87,6 @@ def declare():
     result = POOL.opera('declare_queue', *(queue_name, ))
     if result: return result
 
-
 @APP.route('/delete')
 @AUTH.login_required
 def delete():
@@ -158,7 +157,11 @@ def pag_noack_task():
     global USER_NAME, PASSWD, POOL, ACK_PROCESS_DB_FILE
     page = request.args.get('page')
     ack_msg = AckProcessDB(ACK_PROCESS_DB_FILE)
-    return {"data": ack_msg.pagnation_page(int(page))}
+    return {
+        "data": ack_msg.pagnation_page(int(page)),
+        'status': 1
+    }
+
 
 
 @APP.route('/get_noack_task_total_num')
