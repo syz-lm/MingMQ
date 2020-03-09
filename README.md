@@ -97,6 +97,7 @@ print('关闭成功')
 * 需要对api进行优化，需要寻找一种方式去搞定flask app与uswgi 零依赖的运行方式，或许有替代uswgi的方案；
 * Linux下等内存和Mac下的内存不一致，同样的任务放在虚拟机中的比mac真是机器中所占用的内存要多，我实验的
 Linux发行版为Ubuntu 19 server，可能需要在这方面去探索下造成这个差距的原因；
+* gevent运行flask app在mac下会报错，但是在linux下却是可以的；
 
 ## More
 
