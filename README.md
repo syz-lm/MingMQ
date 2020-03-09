@@ -2,7 +2,7 @@
 
 一个跨平台MQ消息服务，支持和RabbitMQ服务器的大多数功能。
 
-![](https://github.com/zswj123/MingMQ/blob/local/logo.jpg)
+![](https://github.com/zswj123/MingMQ/blob/master/logo.jpg)
 
 ## Server
 
