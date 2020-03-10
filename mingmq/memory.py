@@ -159,13 +159,11 @@ class TaskAckMemory:
         :param message_id: str，消息id
         :return: boolean，True成功 , False表示失败
         """
-        print('-----------------------------------------------------', queue_name in self._map, len(self._map[queue_name]))
         if queue_name in self._map and len(self._map[queue_name]) != 0:
             try:
                 self._map[queue_name].remove(message_id)
                 return True
             except KeyError:
-                print('-----------------------------------------------------', 1)
                 return False
         return False
 

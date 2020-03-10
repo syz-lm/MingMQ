@@ -88,7 +88,7 @@ def main(tsn, queue_name, data):
         close(cli)
 
 
-tsn = 1
+tsn = 1000
 queue_names = ['word']
 datas = ['hello teacher']
 
