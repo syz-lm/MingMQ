@@ -33,13 +33,23 @@ def main():
     parser.add_argument('--TIMEOUT', type=int, default='10',
                         help='输入服务器超时时间（仅linux下有效），默认，10')
 
-    ack_process_db_file = '/var/mingmq/ack_process_db_file.db' if not platform.platform().startswith("Windows") else "C:\mingmq\ack_process_db_file.db"
-    parser.add_argument('--ACK_PROCESS_DB_FILE', type=str, default=ack_process_db_file,
-                        help='输入服务器确认消息文件名，默认/var/mingmq/ack_process_db_file.db(windows系统下为C:\mingmq\ack_process_db_file.db)')
+    ack_process_db_file = '/Volumes/GoodByeUbuntu/mingmq/ack_process_db_file.db'
+    if platform.platform().startswith("Windows"):
+        ack_process_db_file = "C:\mingmq\ack_process_db_file.db"
+    elif platform.platform().startswith('Linux'):
+        ack_process_db_file = '/mnt/hgfs/mingmq/ack_process_db_file.db'
 
-    completely_persistent_process_db_file = '/var/mingmq/completely_persistent_process_db_file.db' if not platform.platform().startswith("Windows") else "C:\mingmq\completely_persistent_process_db_file.db"
+    parser.add_argument('--ACK_PROCESS_DB_FILE', type=str, default=ack_process_db_file,
+                        help='输入服务器确认消息文件名')
+
+    completely_persistent_process_db_file = '/Volumes/GoodByeUbuntu/mingmq/ompletely_persistent_process_db_file.db'
+    if platform.platform().startswith("Windows"):
+        completely_persistent_process_db_file = "C:\mingmq\completely_persistent_process_db_file.db"
+    elif platform.platform().startswith('Linux'):
+        completely_persistent_process_db_file = '/mnt/hgfs/mingmq/completely_persistent_process_db_file.db'
+
     parser.add_argument('--COMPLETELY_PERSISTENT_PROCESS_DB_FILE', type=str, default=completely_persistent_process_db_file,
-                        help='输入服务器确认消息文件名，默认/var/mingmq/completely_persistent_process_db_file.db(windows系统下为C:\mingmq\completely_persistent_process_db_file.db)')
+                        help='输入服务器确认消息文件名')
 
     flags = parser.parse_args()
     try:
