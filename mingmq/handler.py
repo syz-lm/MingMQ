@@ -374,6 +374,7 @@ class Handler:
                     self._stat_memory.declare('send_' + queue_name) and \
                     self._stat_memory.declare('get_' + queue_name) and \
                     self._stat_memory.declare('ack_' + queue_name):
+
                 res_msg = ResMessage(MESSAGE_TYPE['DECLARE_QUEUE'], SUCCESS, [])
                 res_pkg = json.dumps(res_msg).encode()
                 self._send_data(res_pkg)

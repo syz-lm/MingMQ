@@ -8,10 +8,10 @@ from mingmq.client import Client
 
 logging.basicConfig(level=logging.ERROR)
 
-HTML = ''
-with open('./test.html', encoding='utf-8') as file_desc:
-    HTML = file_desc.read()
-
+# HTML = ''
+# with open('./test.html', encoding='utf-8') as file_desc:
+#     HTML = file_desc.read()
+#
 
 def init_cli(first, queue_name):
     """
@@ -39,13 +39,12 @@ def get(client, queue_name):
     print('获取任务成功', message_data)
 
     json_obj = message_data['json_obj']
+    message_id = None
     if len(json_obj) != 0:
         message_id = json_obj[0]['message_id']
 
     if message_id:
-        client.ack_message('hello', message_id)
-
-        print('消息确认成功')
+        print('消息确认成功', client.ack_message(queue_name, message_id))
 
 
 def close(client):
@@ -66,28 +65,30 @@ def main(tsn, queue_name, data):
 
 
     i = 0
+    ts = []
     while i < len(clis):
-        if active_count() <= 100:
-            t = Thread(target=send, args=(clis[i], queue_name, data))
-            t.start()
-            i += 1
-        else:
-            time.sleep(2)
+        t = Thread(target=send, args=(clis[i], queue_name, data))
+        t.start()
+        ts.append(t)
+        i += 1
+
+    for t in ts: t.join()
 
     i = 0
+    ts = []
     while i < len(clis):
-        if active_count() <= 100:
-            t = Thread(target=get, args=(clis[i],))
-            t.start()
-            i += 1
-        else:
-            time.sleep(2)
+        t = Thread(target=get, args=(clis[i], queue_name))
+        t.start()
+        ts.append(t)
+        i += 1
+
+    for t in ts: t.join()
 
     for cli in clis:
         close(cli)
 
 
-tsn = 50000
+tsn = 1
 queue_names = ['word']
 datas = ['hello teacher']
 

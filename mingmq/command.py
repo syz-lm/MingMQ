@@ -2,7 +2,7 @@ import argparse
 import platform
 import logging
 # logging.basicConfig(level=logging.INFO)
-logging.basicConfig(level = logging.INFO, format = '%(levelname)s:%(asctime)s:%(name)s[%(message)s]')
+logging.basicConfig(level = logging.ERROR, format = '%(levelname)s:%(asctime)s:%(name)s[%(message)s]')
 
 from multiprocessing import Queue, Process, freeze_support
 import json
