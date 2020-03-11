@@ -3,6 +3,8 @@ MingMQ
 
 一个跨平台MQ消息服务，支持和RabbitMQ服务器的大多数功能。
 
+.. image:: https://github.com/zswj123/MingMQ/blob/master/logo.jpg
+
 Server
 --------
 
@@ -43,7 +45,7 @@ Web Console
 
    $ mmweb
 
-.. image:: ../web_console.png
+.. image:: https://github.com/zswj123/MingMQ/blob/master/web_console.png
 
 默认端口15674。
 
