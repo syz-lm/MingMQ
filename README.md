@@ -8,18 +8,13 @@
 
 ```
 $ mmserver --help
-usage: 欢迎使用MingMQ消息队列服务器。 [-h] [--CONFIG_REUSE CONFIG_REUSE] [--HOST HOST]
-                          [--PORT PORT] [--MAX_CONN MAX_CONN]
-                          [--USER_NAME USER_NAME] [--PASSWD PASSWD]
-                          [--TIMEOUT TIMEOUT]
-                          [--ACK_PROCESS_DB_FILE ACK_PROCESS_DB_FILE]
-                          [--COMPLETELY_PERSISTENT_PROCESS_DB_FILE COMPLETELY_PERSISTENT_PROCESS_DB_FILE]
+usage: 欢迎使用MingMQ消息队列服务器。 [-h] [--CONFIG_REUSE CONFIG_REUSE] [--HOST HOST] [--PORT PORT] [--MAX_CONN MAX_CONN] [--USER_NAME USER_NAME] [--PASSWD PASSWD] [--TIMEOUT TIMEOUT]
+                          [--ACK_PROCESS_DB_FILE ACK_PROCESS_DB_FILE] [--COMPLETELY_PERSISTENT_PROCESS_DB_FILE COMPLETELY_PERSISTENT_PROCESS_DB_FILE]
 
 optional arguments:
   -h, --help            show this help message and exit
   --CONFIG_REUSE CONFIG_REUSE
-                        是否读取配置文件来启动服务：0为不读取，1为读取，1则使用默认配置文件路径/etc/mingmq_confi
-                        g，该路径不允许修改。
+                        是否读取配置文件来启动服务：0为不读取，1为读取，1则使用默认配置文件路径/etc/mingmq_config，该路径不允许修改。
   --HOST HOST           输入服务器IP地址：: 默认，0.0.0.0
   --PORT PORT           输入服务器端口：默认，15673
   --MAX_CONN MAX_CONN   输入服务器的最大并发数，默认，100
@@ -28,13 +23,9 @@ optional arguments:
   --PASSWD PASSWD       输入服务器密码，默认，mm5201314
   --TIMEOUT TIMEOUT     输入服务器超时时间（仅linux下有效），默认，10
   --ACK_PROCESS_DB_FILE ACK_PROCESS_DB_FILE
-                        输入服务器确认消息文件名，默认/var/mingmq/ack_process_db_file.db(wind
-                        ows系统下为C:\mingmqck_process_db_file.db)
+                        输入服务器确认消息文件名
   --COMPLETELY_PERSISTENT_PROCESS_DB_FILE COMPLETELY_PERSISTENT_PROCESS_DB_FILE
-                        输入服务器确认消息文件名，默认/var/mingmq/completely_persistent_proce
-                        ss_db_file.db(windows系统下为C:\mingmq\completely_persiste
-                        nt_process_db_file.db)
-
+                        输入服务器确认消息文件名
 
 $ mmserver
 正在启动，服务器的配置为
