@@ -59,7 +59,7 @@ $ mmweb
 ## Client
 ### Hello, World!
 ```
-from mingmq import client
+from mingmq.client import Client
 
 client = Client('192.168.1.30', 15673)
 
