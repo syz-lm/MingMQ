@@ -1,3 +1,7 @@
+"""
+web_console的实现
+"""
+
 import json
 import logging
 import math
@@ -44,7 +48,7 @@ USERS = [{
     'passwd': PASSWD
 }]
 
-POOL = Pool('localhost', PORT, USER_NAME, PASSWD, 10)
+POOL = None
 
 
 @AUTH.get_password
@@ -195,15 +199,19 @@ def delete_ack_message():
 
 
 def debug():
+    global POOL, APP
     try:
+        POOL = Pool('localhost', PORT, USER_NAME, PASSWD, 10)
         APP.run(host='0.0.0.0', port=15674)
     except: pass
     finally: POOL.release()
 
 
 def main():
-    global APP
+    global APP, POOL
     try:
+        POOL = Pool('localhost', PORT, USER_NAME, PASSWD, 10)
+
         monkey.patch_all()
 
         http_server = WSGIServer(('0.0.0.0', int(15674)), APP)
