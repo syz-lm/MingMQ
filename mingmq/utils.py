@@ -12,9 +12,6 @@ from mingmq.message import MESSAGE_TYPE
 
 
 def str_to_hex(stri):
-    """
-    字符串转16进制
-    """
     # return ' '.join([hex(ord(c)) for c in stri])
     buf = StringIO()
 
@@ -30,9 +27,6 @@ def str_to_hex(stri):
 
 
 def hex_to_str(stri):
-    """
-    16进制转字符串
-    """
     # return ''.join([chr(i) for i in [int(b, 16) for b in stri.split(' ')]])
     buf = StringIO()
 
@@ -46,23 +40,14 @@ def hex_to_str(stri):
 
 
 def str_to_bin(stri):
-    """
-    字符串转二进制
-    """
     return ' '.join([bin(ord(c)) for c in stri])
 
 
 def bin_to_str(stri):
-    """
-    二进制转字符串
-    """
     return ''.join([chr(i) for i in [int(b, 2) for b in stri.split(' ')]])
 
 
 def to_json(data):
-    """
-    转换成json
-    """
     try:
         msg = json.loads(data)
         return msg
@@ -72,9 +57,6 @@ def to_json(data):
 
 
 def check_msg(msg):
-    """
-    校验数据
-    """
     if 'type' not in msg and msg['type'] not in MESSAGE_TYPE.values():
         return False
     return True
@@ -126,7 +108,13 @@ import inspect
 
 
 def get_size(obj, seen=None):
-    """Recursively finds size of objects in bytes"""
+    """
+    获取对象的内存占用大小，单位字节。
+
+    :param obj: 对象
+    :param seen:
+    :return: int 字节
+    """
     size = sys.getsizeof(obj)
     if seen is None:
         seen = set()
