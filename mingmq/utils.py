@@ -91,11 +91,23 @@ def check_config(flags):
         return 3
 
     ack_process_db_file = flags.ACK_PROCESS_DB_FILE.replace('\\', os.path.sep).replace('/', os.path.sep)
+
+    try:
+        os.makedirs(ack_process_db_file.rsplit(os.path.sep, 1)[0])
+    except FileExistsError:
+        pass
+
     # 检查确认消息文件
     if not os.path.exists(ack_process_db_file.rsplit(os.path.sep, 1)[0]):
         return 4
 
     completely_persistent_process_db_file = flags.COMPLETELY_PERSISTENT_PROCESS_DB_FILE.replace('\\', os.path.sep).replace('/', os.path.sep)
+
+    try:
+        os.makedirs(completely_persistent_process_db_file.rsplit(os.path.sep, 1)[0])
+    except FileExistsError:
+        pass
+
     # 检查发送消息文件
     if not os.path.exists(completely_persistent_process_db_file.rsplit(os.path.sep, 1)[0]):
         return 5
