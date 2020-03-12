@@ -5,6 +5,13 @@ MingMQ
 
 .. image:: https://github.com/zswj123/MingMQ/blob/master/logo.jpg
 
+Install
+---------
+
+::
+
+   pip3 install mingmq
+
 Server
 --------
 
