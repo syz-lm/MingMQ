@@ -49,7 +49,7 @@ class AckProcessDB:
             self.logger.debug('[%s][%s] 影响的行数: %s', repr(sql), repr(args)[:100], repr(c.rowcount))
             conn.commit()
         except Exception:
-            conn.rollback()
+            if conn: conn.rollback()
             self.logger.debug(traceback.format_exc())
         finally:
             if c:
@@ -69,7 +69,7 @@ class AckProcessDB:
             self.logger.debug('[%s][%s] 影响的行数: %s', repr(sql), repr(args)[:100], repr(c.rowcount))
             conn.commit()
         except Exception:
-            conn.rollback()
+            if conn: conn.rollback()
             self.logger.debug(traceback.format_exc())
         finally:
             if c:
@@ -89,7 +89,7 @@ class AckProcessDB:
             self.logger.debug('[%s][%s] 影响的行数: %s', repr(sql), repr(args)[:100], repr(c.rowcount))
             conn.commit()
         except Exception:
-            conn.rollback()
+            if conn: conn.rollback()
             self.logger.debug(traceback.format_exc())
         finally:
             if c:
@@ -217,7 +217,7 @@ class CompletelyPersistentProcessDB:
             self.logger.debug('[%s][%s] 影响的行数: %s', repr(sql), repr(args)[:100], repr(c.rowcount))
             conn.commit()
         except Exception:
-            conn.rollback()
+            if conn: conn.rollback()
             self.logger.debug(traceback.format_exc())
         finally:
             if c:
@@ -237,7 +237,7 @@ class CompletelyPersistentProcessDB:
             self.logger.debug('[%s][%s] 影响的行数: %s', repr(sql), repr(args)[:100], repr(c.rowcount))
             conn.commit()
         except Exception:
-            conn.rollback()
+            if conn: conn.rollback()
             self.logger.debug(traceback.format_exc())
         finally:
             if c:
@@ -257,7 +257,7 @@ class CompletelyPersistentProcessDB:
             self.logger.debug('[%s][%s] 影响的行数: %s', repr(sql), repr(args)[:100], repr(c.rowcount))
             conn.commit()
         except Exception:
-            conn.rollback()
+            if conn: conn.rollback()
             self.logger.debug(traceback.format_exc())
         finally:
             if c:
