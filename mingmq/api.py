@@ -14,7 +14,6 @@
 import json
 import logging
 import math
-from typing import Any
 
 logging.basicConfig(level=logging.DEBUG)
 from datetime import timedelta
@@ -30,7 +29,7 @@ from gevent.pywsgi import WSGIServer
 from gevent import monkey
 
 
-def init_mmcli_config() -> (str, str, int, str):
+def _init_mmcli_config() -> (str, str, int, str):
     """读取MingMQ的端口，账号，密码，ack缓存文件
 
     """
@@ -44,7 +43,7 @@ def init_mmcli_config() -> (str, str, int, str):
     return user_name, passwd, port, ack_process_db_file
 
 
-def init_flask() -> (Flask, HTTPBasicAuth):
+def _init_flask() -> (Flask, HTTPBasicAuth):
     """创建一个Flask APP对象，设置静态文件的缓存时间，以及HTTP Basic认证对象。
 
     """
@@ -58,18 +57,18 @@ def init_flask() -> (Flask, HTTPBasicAuth):
 
     return app, auth
 
-APP, AUTH = init_flask()
-USER_NAME, PASSWD, PORT, ACK_PROCESS_DB_FILE = init_mmcli_config()
+_APP, _AUTH = _init_flask()
+_USER_NAME, _PASSWD, _PORT, _ACK_PROCESS_DB_FILE = _init_mmcli_config()
 USERS = [{
-    'user_name': USER_NAME,
-    'passwd': PASSWD
+    'user_name': _USER_NAME,
+    'passwd': _PASSWD
 }]
 
-POOL = None
+_POOL = None
 
 
-@AUTH.get_password
-def get_passwd(user_name):
+@_AUTH.get_password
+def _get_passwd(user_name):
     """根据指定的用户名获取密码，这个是HTTPBasicAuth的Flask扩展
     自动调用的。
 
@@ -81,8 +80,8 @@ def get_passwd(user_name):
         return None
 
 
-@APP.route('/', methods=['GET'])
-@AUTH.login_required
+@_APP.route('/', methods=['GET'])
+@_AUTH.login_required
 def main():
     """当用户访问"/"时返回对应的main.html模版。当用户
     第一次访问这个路径时，会提示用户输入账号密码。账号密码
@@ -99,7 +98,7 @@ def main():
         return render_template("main.html")
 
 
-@APP.route('/logout', methods=['GET', 'POST'])
+@_APP.route('/logout', methods=['GET', 'POST'])
 def logout():
     """当用户访问"/logout"时，返回401，如果是post请求，若是
     get请求，则返回一段html文本给浏览器，这段文本会被浏览器渲染
@@ -126,8 +125,8 @@ def logout():
             """
 
 
-@APP.route('/declare')
-@AUTH.login_required
+@_APP.route('/declare')
+@_AUTH.login_required
 def declare():
     """声明队列，即创建一个队列。需要在url参数中提交queue_name参数，并且
     这个队列名必须要在MingMQ的服务中不存在，如果存在，就不会执行相应的操作
@@ -151,14 +150,14 @@ def declare():
         }
 
     """
-    global USER_NAME, PASSWD, POOL
+    global _USER_NAME, _PASSWD, _POOL
     queue_name = request.args.get('queue_name')
-    result = POOL.opera('declare_queue', *(queue_name, ))
+    result = _POOL.opera('declare_queue', *(queue_name,))
     if result: return result
 
 
-@APP.route('/delete')
-@AUTH.login_required
+@_APP.route('/delete')
+@_AUTH.login_required
 def delete():
     """删除指定的队列名。需要url参数提供queue_name，如果该queue_name
     存在于MingMQ则会删除该队列所有的任务和未确认的任务缓存，需要比较谨慎
@@ -181,14 +180,14 @@ def delete():
         }
 
     """
-    global USER_NAME, PASSWD, POOL
+    global _USER_NAME, _PASSWD, _POOL
     queue_name = request.args.get('queue_name')
-    result = POOL.opera('del_queue', *(queue_name, ))
+    result = _POOL.opera('del_queue', *(queue_name,))
     if result: return result
 
 
-@APP.route('/get')
-@AUTH.login_required
+@_APP.route('/get')
+@_AUTH.login_required
 def get():
     """获取指定队列的一个任务数据，需要用户登陆才能使用。
     返回的是json数据，具体要看实际的返回结果。
@@ -218,14 +217,14 @@ def get():
         }
 
     """
-    global USER_NAME, PASSWD, POOL
+    global _USER_NAME, _PASSWD, _POOL
     queue_name = request.args.get('queue_name')
-    result = POOL.opera('get_data_from_queue', *(queue_name, ))
+    result = _POOL.opera('get_data_from_queue', *(queue_name,))
     if result: return result
 
 
-@APP.route('/put', methods=['POST'])
-@AUTH.login_required
+@_APP.route('/put', methods=['POST'])
+@_AUTH.login_required
 def put():
     """向队列发送一个任务数据，也就是当用户访问"/put"请求，并且带url
     参数queue_name和message，queue_name为队列名，message为要发送
@@ -248,15 +247,15 @@ def put():
         }
 
     """
-    global USER_NAME, PASSWD, POOL
+    global _USER_NAME, _PASSWD, _POOL
     queue_name = request.form['queue_name']
     message = request.form['message']
-    result = POOL.opera('send_data_to_queue', *(queue_name, message))
+    result = _POOL.opera('send_data_to_queue', *(queue_name, message))
     if result: return result
 
 
-@APP.route('/get_all')
-@AUTH.login_required
+@_APP.route('/get_all')
+@_AUTH.login_required
 def get_all():
     """获取统计数据，这些统计数据是包含队列的发送速度，获取速度，确认速度
     队列还有多少任务没消费，多少任务未确认，内存占用等信息。
@@ -294,13 +293,13 @@ def get_all():
         }
 
     """
-    global USER_NAME, PASSWD, POOL
-    result = POOL.opera('get_stat')
+    global _USER_NAME, _PASSWD, _POOL
+    result = _POOL.opera('get_stat')
     if result: return result
 
 
-@APP.route('/clear')
-@AUTH.login_required
+@_APP.route('/clear')
+@_AUTH.login_required
 def clear():
     """清空队列，这个操作会导致MingMQ中关于该队列等所有内存以及缓存都
     全部丢失，而且不能回滚。所以要比较慎重的使用。
@@ -324,14 +323,14 @@ def clear():
         }
 
     """
-    global USER_NAME, PASSWD, POOL
+    global _USER_NAME, _PASSWD, _POOL
     queue_name = request.args.get('queue_name')
-    result = POOL.opera('clear_queue', *(queue_name, ))
+    result = _POOL.opera('clear_queue', *(queue_name,))
     if result: return result
 
 
-@APP.route('/ack', methods=['POST'])
-@AUTH.login_required
+@_APP.route('/ack', methods=['POST'])
+@_AUTH.login_required
 def ack():
     """确认消息，就是当用户从一个队列中获取任务之后，需要对该任务
     进行一个确认，如果，一直没确认，管理人可以考虑重新将该任务放入
@@ -357,27 +356,27 @@ def ack():
         }
 
     """
-    global USER_NAME, PASSWD, POOL
+    global _USER_NAME, _PASSWD, _POOL
     queue_name = request.form['queue_name']
     message_id = request.form['message_id']
-    result = POOL.opera('ack_message', *(queue_name, message_id))
+    result = _POOL.opera('ack_message', *(queue_name, message_id))
     if result: return result
 
 
-@APP.route('/get_speed')
-@AUTH.login_required
+@_APP.route('/get_speed')
+@_AUTH.login_required
 def get_speed():
     """获取队列的速度，这个没用过都，感觉很浪费。
 
     """
-    global USER_NAME, PASSWD, POOL
+    global _USER_NAME, _PASSWD, _POOL
     queue_name = request.args.get('queue_name')
-    result = POOL.opera('get_speed', *(queue_name, ))
+    result = _POOL.opera('get_speed', *(queue_name,))
     if result: return result
 
 
-@APP.route('/pag_noack_task')
-@AUTH.login_required
+@_APP.route('/pag_noack_task')
+@_AUTH.login_required
 def pag_noack_task():
     """分页获取未确认的任务id，需要用户登陆后才能使用。
     用户访问路径"/pag_noack_task"，带url参数page页数。
@@ -398,9 +397,9 @@ def pag_noack_task():
         }
 
     """
-    global USER_NAME, PASSWD, POOL, ACK_PROCESS_DB_FILE
+    global _USER_NAME, _PASSWD, _POOL, _ACK_PROCESS_DB_FILE
     page = request.args.get('page')
-    ack_msg = AckProcessDB(ACK_PROCESS_DB_FILE)
+    ack_msg = AckProcessDB(_ACK_PROCESS_DB_FILE)
     return {
         "data": ack_msg.pagnation_page(int(page)),
         'status': 1
@@ -408,8 +407,8 @@ def pag_noack_task():
 
 
 
-@APP.route('/get_noack_task_total_num')
-@AUTH.login_required
+@_APP.route('/get_noack_task_total_num')
+@_AUTH.login_required
 def get_noack_task_total_num():
     """获取未确认任务的总个数，是页数。
 
@@ -442,8 +441,8 @@ def get_noack_task_total_num():
         }
 
     """
-    global USER_NAME, PASSWD, POOL, ACK_PROCESS_DB_FILE
-    ack_msg = AckProcessDB(ACK_PROCESS_DB_FILE)
+    global _USER_NAME, _PASSWD, _POOL, _ACK_PROCESS_DB_FILE
+    ack_msg = AckProcessDB(_ACK_PROCESS_DB_FILE)
 
     reuslt =  ack_msg.total_num()
     if reuslt and len(reuslt) > 0:
@@ -456,8 +455,8 @@ def get_noack_task_total_num():
         }
 
 
-@APP.route('/delete_ack_message', methods=['POST'])
-@AUTH.login_required
+@_APP.route('/delete_ack_message', methods=['POST'])
+@_AUTH.login_required
 def delete_ack_message():
     """删除一个指定的task_id的未确认任务。
 
@@ -479,10 +478,10 @@ def delete_ack_message():
         }
 
     """
-    global USER_NAME, PASSWD, POOL
+    global _USER_NAME, _PASSWD, _POOL
     queue_name = request.form['queue_name']
     message_id = request.form['message_id']
-    result = POOL.opera('delete_ack_message_id_queue_name', *(message_id, queue_name))
+    result = _POOL.opera('delete_ack_message_id_queue_name', *(message_id, queue_name))
     if result: return result
 
 
@@ -490,27 +489,27 @@ def debug():
     """在开发模式下使用
 
     """
-    global POOL, APP
+    global _POOL, _APP
     try:
-        POOL = Pool('localhost', PORT, USER_NAME, PASSWD, 10)
-        APP.run(host='0.0.0.0', port=15674)
+        _POOL = Pool('localhost', _PORT, _USER_NAME, _PASSWD, 10)
+        _APP.run(host='0.0.0.0', port=15674)
     except: pass
-    finally: POOL.release()
+    finally: _POOL.release()
 
 
 def main():
     """生产环境下使用
 
     """
-    global APP, POOL
+    global _APP, _POOL
     try:
-        POOL = Pool('localhost', PORT, USER_NAME, PASSWD, 10)
+        _POOL = Pool('localhost', _PORT, _USER_NAME, _PASSWD, 10)
 
         monkey.patch_all()
 
-        http_server = WSGIServer(('0.0.0.0', int(15674)), APP)
+        http_server = WSGIServer(('0.0.0.0', int(15674)), _APP)
         http_server.serve_forever()
     except Exception as e:
         logging.error(e)
     finally:
-        POOL.release()
+        _POOL.release()

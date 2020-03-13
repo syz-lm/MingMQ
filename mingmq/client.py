@@ -48,7 +48,7 @@ class Pool:
     """
     _LOCK = Lock()
 
-    logger = logging.getLogger('Pool')
+    _logger = logging.getLogger('Pool')
 
 
     def __init__(self, host, port, user_name, passwd, size):
@@ -65,9 +65,9 @@ class Pool:
 
         self._que = deque()
 
-        self.init_pool()
+        self._init_pool()
 
-    def init_pool(self):
+    def _init_pool(self):
         """初始化连接池，会创建Client对象，并且自动登陆，然后将登陆
         后的Client存放到连接池中。
 
@@ -91,15 +91,15 @@ class Pool:
                 if len(self._que) != 0:
                     conn = self._que.popleft()
                     if conn.ping() is False:
-                        self.logger.debug("conn ping不通，或者为None: %s", repr(conn))
+                        self._logger.debug("conn ping不通，或者为None: %s", repr(conn))
                         raise Exception("conn ping不通，或者为None")
                     return conn
                 else:
                     raise ClientPoolEmpty('连接池已空')
             except ClientPoolEmpty as e:
-                self.logger.error(str(e))
+                self._logger.error(str(e))
 
-                self.init_pool()
+                self._init_pool()
                 return self._que.popleft()
 
     def back_conn(self, conn):
@@ -111,7 +111,7 @@ class Pool:
             try:
                 if conn: conn.close()
             except Exception:
-                self.logger.error(traceback.format_exc())
+                self._logger.error(traceback.format_exc())
 
         self._que.clear()
 
@@ -122,14 +122,14 @@ class Pool:
             callback = getattr(conn, method_name)
             result = callback(*args)
             if result: return result
-            self.logger.debug('返回数据：%s', repr(result))
+            self._logger.debug('返回数据：%s', repr(result))
             raise Exception('返回数据为False，或为None')
         except Exception:
-            self.logger.error(traceback.format_exc())
+            self._logger.error(traceback.format_exc())
             try:
                 if conn: conn.close()
             except Exception:
-                self.logger.error(traceback.format_exc())
+                self._logger.error(traceback.format_exc())
 
             conn = None
         finally:

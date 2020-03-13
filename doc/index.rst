@@ -22,7 +22,7 @@ Server
 
 ::
 
-   $ mmserver ==help
+   $ mmserver --help
    usage: 欢迎使用MingMQ消息队列服务器。 [=h] [==CONFIG_REUSE CONFIG_REUSE] [==HOST HOST] [==PORT PORT] [==MAX_CONN MAX_CONN] [==USER_NAME USER_NAME] [==PASSWD PASSWD] [==TIMEOUT TIMEOUT]
                              [==ACK_PROCESS_DB_FILE ACK_PROCESS_DB_FILE] [==COMPLETELY_PERSISTENT_PROCESS_DB_FILE COMPLETELY_PERSISTENT_PROCESS_DB_FILE]
 
