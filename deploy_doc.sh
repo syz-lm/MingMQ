@@ -1,1 +1,1 @@
-scp -r ./doc/_build/html wobuhuizaibeishang@serv_pro:~/static_server/MingMQ
+scp -r ./doc/_build/html wobuhuizaibeishang@serv_pro:~/static_server/MingMQgi
