@@ -1,14 +1,14 @@
 """为MingMQ提供一个Python的客户端驱动，并且还提供了一个连接池，但是是
 基于多线程的，因为传统编程框架大多数是使用多线程的，所以是必须提供一个，
-后面就再增加一个异步的客户端驱动。
+后面就再增加一个异步的客户端驱动；
 
-总的来说，也就是提供两个类，Client和Pool。
+总的来说，也就是提供两个类，Client和Pool:
 
 * Client封装了对MingMQ的各种操作；
 * Pool主要是不用经常登陆，可以很好的节省时间，如果是其它应用调用连接池，还能保持服务的高可用，用户根本不需要管出现的问题；
 
 Pool是基于线程安全的，另外Client也是线程安全的，Client不允许并发，必须是线性的操作，而且每个Client连接
-的操作必须结束了才能再访问，这是仅仅限于这个同步Io的客户度驱动。如果后面提供异步IO就另谈了。
+的操作必须结束了才能再访问，这是仅仅限于这个同步Io的客户度驱动。如果后面提供异步IO就另谈了；
 
 """
 
@@ -35,7 +35,7 @@ from threading import Lock
 
 class Pool:
     """一个多线程的连接池。提供了一些方法的调用，但是用户只需要关心
-    opera这个方法就够了，其它都已经封装好了。
+    opera这个方法就够了，其它都已经封装好了；
 
     类成员:
 
@@ -58,7 +58,18 @@ class Pool:
 
     def __init__(self, host, port, user_name, passwd, size):
         """主要的作用是初始化连接池，保存连接池的连接信息用于重连
-        和重新初始化连接池。
+        和重新初始化连接池；
+
+        :param host: 服务器主机地址；
+        :type host: str
+        :param port: 服务器端口；
+        :type port: int
+        :param user_name: 用户名；
+        :type user_name: str
+        :param passwd: 密码；
+        :type passwd: str
+        :param size: 连接池大小；
+        :type size: int
 
         """
         self._host = host
@@ -74,7 +85,7 @@ class Pool:
 
     def _init_pool(self):
         """初始化连接池，会创建Client对象，并且自动登陆，然后将登陆
-        后的Client存放到连接池中。
+        后的Client存放到连接池中；
 
         """
         for i in range(self._size):
@@ -86,24 +97,35 @@ class Pool:
         """从连接池中获取一个连接；
 
         :return: client连接；
-        :rtype: Client；
+        :rtype: Client
 
         这个是线程安全的，因为也是必须线程安全。在获取后，会发送ping
         消息给服务端，如果服务端响应了，证明这个连接是可用的，如果未
         响应，说明这个连接失效了，或者服务器不可用了。如果连接池中没有
         连接用了，会重新初始化连接，如果其中一个连接失效了，会抛出异常
         ，但是不会重新初始化连接池。连接池空时会抛出连接池已空的异常(
-        ClientPoolEmpty)。
+        ClientPoolEmpty)，另外，循环获取连接池中的连接，如果ping不通
+        ，就再循环，直到ping通就返回conn，如若连接池都空了，则初始化连
+        接池，如果失败就不管了；
 
         """
         with Pool._LOCK:
             try:
                 if len(self._que) != 0:
-                    conn = self._que.popleft()
-                    if conn.ping() is False:
-                        self._logger.debug("conn ping不通，或者为None: %s", repr(conn))
-                        raise Exception("conn ping不通，或者为None")
-                    return conn
+                    i = 0
+                    while i < len(self._que):
+                        try:
+                            conn = self._que.popleft()
+                            if conn.ping() is False:
+                                self._logger.debug("conn ping不通，或者为None: %s", repr(conn))
+                            else:
+                                return conn
+                        except Exception as e:
+                            self._logger.error(str(e))
+
+                        i+= 1
+
+                    raise ClientPoolEmpty('连接池已空')
                 else:
                     raise ClientPoolEmpty('连接池已空')
             except ClientPoolEmpty as e:
@@ -116,7 +138,7 @@ class Pool:
         """将连接归还给连接池；
 
         :param conn: 从连接池中取出的连接；
-        :type conn: Client；
+        :type conn: Client
 
         这个操作是线程安全的；
 
@@ -143,12 +165,12 @@ class Pool:
         """用来向服务器发送请求；
 
         :param method_name: 方法名；
-        :type method_name: str；
+        :type method_name: str
         :param args: 方法名方法的参数；
-        :type args: 可变参数；
+        :type args: 可变参数
 
         :return: 方法名调用后返回的结果；
-        :rtype: dict；
+        :rtype: dict
 
         如果没有返回数据，证明客户端与服务器通信失败，所以就关闭连接
         ，反之则归还连接到连接池；
@@ -177,7 +199,7 @@ class Pool:
         """返回连接池中所有的连接；
 
         :return: 连接数组；
-        :rtype: list；
+        :rtype: list
 
         """
         with Pool._LOCK: return [i for i in self._que]

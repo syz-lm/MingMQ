@@ -255,16 +255,18 @@ class ReqRestoreSendMessage(dict):
 
 
 class Task(dict):
-    """
-    任务数据结构
+    """任务数据结构，这个是存储在服务器内存中的队列数据；
+
     """
 
     def __init__(self, message_data):
-        """
-        初始化
-        :param message_id: str，用于消息确认时对应的任务id，因为不可能去用任务字符串去当索引，因为任务数据可能是非常长的
-                            一个字符串，比如说任务数据可能是爬虫抓取的一个网页的所有源代码
-        :param message_data: str，任务数据字符串
+        """初始化；
+
+        :param message_id: 用于消息确认时对应的任务id，因为不可能去用任务字符串去当索引，因为任务数据可能是非常长的一个字符串，比如说任务数据可能是爬虫抓取的一个网页的所有源代码；
+        :type message_id: str
+        :param message_data: 任务数据字符串；
+        :type message_data: str
+
         """
         super().__init__({
             'message_id': gen_message_id(),
