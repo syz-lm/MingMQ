@@ -7,6 +7,8 @@ import netifaces
 import socket
 import os
 from io import StringIO
+import sys
+import inspect
 
 from mingmq.message import MESSAGE_TYPE
 
@@ -113,10 +115,6 @@ def check_config(flags):
         return 5
 
     return 417
-
-
-import sys
-import inspect
 
 
 def get_size(obj, seen=None):

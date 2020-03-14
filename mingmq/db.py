@@ -4,7 +4,7 @@ import traceback
 
 
 class AckProcessDB:
-    logger = logging.getLogger('AckProcessDB')
+    _logger = logging.getLogger('AckProcessDB')
     
     def __init__(self, db_file):
         self._db_file = db_file
@@ -24,7 +24,7 @@ class AckProcessDB:
                   'pub_date int)'
             c.execute(sql)
         except Exception:
-            self.logger.debug(traceback.format_exc())
+            self._logger.debug(traceback.format_exc())
         finally:
             if c:
                 c.close()
@@ -46,11 +46,11 @@ class AckProcessDB:
             sql = 'insert into ack_msg(message_id, queue_name, message_data, pub_date) values(?, ?, ?, ?)'
             args = (message_id, queue_name, message_data, pub_date)
             c.execute(sql, args)
-            self.logger.debug('[%s][%s] 影响的行数: %s', repr(sql), repr(args)[:100], repr(c.rowcount))
+            self._logger.debug('[%s][%s] 影响的行数: %s', repr(sql), repr(args)[:100], repr(c.rowcount))
             conn.commit()
         except Exception:
             if conn: conn.rollback()
-            self.logger.debug(traceback.format_exc())
+            self._logger.debug(traceback.format_exc())
         finally:
             if c:
                 c.close()
@@ -66,11 +66,11 @@ class AckProcessDB:
             sql = 'delete from ack_msg where message_id = ?'
             args = (message_id, )
             c.execute(sql, args)
-            self.logger.debug('[%s][%s] 影响的行数: %s', repr(sql), repr(args)[:100], repr(c.rowcount))
+            self._logger.debug('[%s][%s] 影响的行数: %s', repr(sql), repr(args)[:100], repr(c.rowcount))
             conn.commit()
         except Exception:
             if conn: conn.rollback()
-            self.logger.debug(traceback.format_exc())
+            self._logger.debug(traceback.format_exc())
         finally:
             if c:
                 c.close()
@@ -86,11 +86,11 @@ class AckProcessDB:
             sql = 'delete from ack_msg where queue_name = ?'
             args = (queue_name, )
             c.execute(sql, args)
-            self.logger.debug('[%s][%s] 影响的行数: %s', repr(sql), repr(args)[:100], repr(c.rowcount))
+            self._logger.debug('[%s][%s] 影响的行数: %s', repr(sql), repr(args)[:100], repr(c.rowcount))
             conn.commit()
         except Exception:
             if conn: conn.rollback()
-            self.logger.debug(traceback.format_exc())
+            self._logger.debug(traceback.format_exc())
         finally:
             if c:
                 c.close()
@@ -120,7 +120,7 @@ class AckProcessDB:
             result = c.fetchall()
             return result
         except Exception:
-            self.logger.debug(traceback.format_exc())
+            self._logger.debug(traceback.format_exc())
         finally:
             if c:
                 c.close()
@@ -146,7 +146,7 @@ class AckProcessDB:
             result = c.fetchall()
             return result
         except Exception:
-            self.logger.debug(traceback.format_exc())
+            self._logger.debug(traceback.format_exc())
         finally:
             if c:
                 c.close()
@@ -164,7 +164,7 @@ class AckProcessDB:
             result = c.fetchall()
             return result
         except Exception:
-            self.logger.debug(traceback.format_exc())
+            self._logger.debug(traceback.format_exc())
         finally:
             if c:
                 c.close()
@@ -173,7 +173,7 @@ class AckProcessDB:
 
 
 class CompletelyPersistentProcessDB:
-    logger = logging.getLogger('CompletelyPersistentProcessDB')
+    _logger = logging.getLogger('CompletelyPersistentProcessDB')
 
     def __init__(self, db_file):
         self._db_file = db_file
@@ -192,7 +192,7 @@ class CompletelyPersistentProcessDB:
                   'pub_date int)'
             c.execute(sql)
         except Exception:
-            self.logger.debug(traceback.format_exc())
+            self._logger.debug(traceback.format_exc())
         finally:
             if c:
                 c.close()
@@ -214,11 +214,11 @@ class CompletelyPersistentProcessDB:
             sql = 'insert into send_msg(message_id, queue_name, message_data, pub_date) values(?, ?, ?, ?)'
             args = (message_id, queue_name, message_data, pub_date)
             c.execute(sql, args)
-            self.logger.debug('[%s][%s] 影响的行数: %s', repr(sql), repr(args)[:100], repr(c.rowcount))
+            self._logger.debug('[%s][%s] 影响的行数: %s', repr(sql), repr(args)[:100], repr(c.rowcount))
             conn.commit()
         except Exception:
             if conn: conn.rollback()
-            self.logger.debug(traceback.format_exc())
+            self._logger.debug(traceback.format_exc())
         finally:
             if c:
                 c.close()
@@ -234,11 +234,11 @@ class CompletelyPersistentProcessDB:
             sql = 'delete from send_msg where message_id = ?'
             args = (message_id, )
             c.execute(sql, args)
-            self.logger.debug('[%s][%s] 影响的行数: %s', repr(sql), repr(args)[:100], repr(c.rowcount))
+            self._logger.debug('[%s][%s] 影响的行数: %s', repr(sql), repr(args)[:100], repr(c.rowcount))
             conn.commit()
         except Exception:
             if conn: conn.rollback()
-            self.logger.debug(traceback.format_exc())
+            self._logger.debug(traceback.format_exc())
         finally:
             if c:
                 c.close()
@@ -254,11 +254,11 @@ class CompletelyPersistentProcessDB:
             sql = 'delete from send_msg where queue_name = ?'
             args = (queue_name, )
             c.execute(sql, args)
-            self.logger.debug('[%s][%s] 影响的行数: %s', repr(sql), repr(args)[:100], repr(c.rowcount))
+            self._logger.debug('[%s][%s] 影响的行数: %s', repr(sql), repr(args)[:100], repr(c.rowcount))
             conn.commit()
         except Exception:
             if conn: conn.rollback()
-            self.logger.debug(traceback.format_exc())
+            self._logger.debug(traceback.format_exc())
         finally:
             if c:
                 c.close()
@@ -284,7 +284,7 @@ class CompletelyPersistentProcessDB:
             result = c.fetchall()
             return result
         except Exception:
-            self.logger.debug(traceback.format_exc())
+            self._logger.debug(traceback.format_exc())
         finally:
             if c:
                 c.close()
@@ -302,7 +302,7 @@ class CompletelyPersistentProcessDB:
             result = c.fetchall()
             return result
         except Exception:
-            self.logger.debug(traceback.format_exc())
+            self._logger.debug(traceback.format_exc())
         finally:
             if c:
                 c.close()

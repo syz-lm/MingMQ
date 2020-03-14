@@ -15,18 +15,17 @@ from threading import Thread
 from multiprocessing import Process
 
 
-
 class CompletelyPersistentProcess:
-    logger = logging.getLogger('CompletelyPersistentProcess')
+    _logger = logging.getLogger('CompletelyPersistentProcess')
 
     def __init__(
-        self,
-        completely_persistent_process_db_file,
-        completely_persistent_process_queue: Queue,
-        client_host,
-        client_port,
-        client_user,
-        client_passwd
+            self,
+            completely_persistent_process_db_file,
+            completely_persistent_process_queue: Queue,
+            client_host,
+            client_port,
+            client_user,
+            client_passwd
     ):
         self._completely_persistent_process_queue = completely_persistent_process_queue
         self._completely_persistent_process_db = CompletelyPersistentProcessDB(completely_persistent_process_db_file)
@@ -50,7 +49,7 @@ class CompletelyPersistentProcess:
 
     def _load_send_db_memory(self):
         try:
-            self.logger.debug('正在恢复数据send。')
+            self._logger.debug('正在恢复数据send。')
             pool = Pool(self._client_host, self._client_port, self._client_user, self._client_passwd, 100)
 
             result = self._completely_persistent_process_db.total_num()
@@ -61,7 +60,7 @@ class CompletelyPersistentProcess:
                     total_pages = math.ceil(total_pages / 100)
                 except:
                     total_pages = 0
-                    self.logger.error(traceback.format_exc())
+                    self._logger.error(traceback.format_exc())
 
             method_name = 'restore_send_message'
             page = 1
@@ -74,7 +73,7 @@ class CompletelyPersistentProcess:
                         for row in rows:
                             message_id, queue_name, message_data, pub_date = row
                             if queue_name not in filter:
-                                pool.opera('declare_queue', *(queue_name, ))
+                                pool.opera('declare_queue', *(queue_name,))
                                 filter.append(queue_name)
 
                             t = Thread(target=pool.opera, args=(method_name, *(queue_name, message_data, message_id)))
@@ -85,17 +84,17 @@ class CompletelyPersistentProcess:
 
                     page += 1
                 except Exception:
-                    self.logger.error(traceback.format_exc())
+                    self._logger.error(traceback.format_exc())
         except:
-            self.logger.error(traceback.format_exc())
+            self._logger.error(traceback.format_exc())
         try:
             if pool: pool.release()
-            self.logger.info('连接已释放完毕，剩余连接：%s。', repr(pool.all()))
+            self._logger.info('连接已释放完毕，剩余连接：%s。', repr(pool.all()))
         except Exception:
-            self.logger.error(traceback.format_exc())
+            self._logger.error(traceback.format_exc())
 
     def serv_forever(self):
-        self.logger.debug('CompletelyPersistentProcess 正在启动')
+        self._logger.debug('CompletelyPersistentProcess 正在启动')
 
         Process(target=self._load_send_db_memory).start()
 
@@ -104,17 +103,17 @@ class CompletelyPersistentProcess:
                 msg = self._completely_persistent_process_queue.get()
                 self._dispatch(msg)
             except Exception:
-                self.logger.error(traceback.format_exc())
+                self._logger.error(traceback.format_exc())
 
     def _dispatch(self, msg):
         if 'type' not in msg:
-            self.logger.error('错误_dispatch1：msg: %s', repr(msg)[:100])
+            self._logger.error('错误_dispatch1：msg: %s', repr(msg)[:100])
             return
 
         _type = msg['type']
 
         if _type not in COMPLETELY_PERSISTENT_PROCESS_MESSAGE.values():
-            self.logger.error('错误_dispatch2：msg: %s', repr(msg)[:100])
+            self._logger.error('错误_dispatch2：msg: %s', repr(msg)[:100])
             return
 
         if _type == COMPLETELY_PERSISTENT_PROCESS_MESSAGE['SEND']:
@@ -124,15 +123,14 @@ class CompletelyPersistentProcess:
         elif _type == COMPLETELY_PERSISTENT_PROCESS_MESSAGE['DELETE_QUEUE']:
             self._delete_queue(msg)
         else:
-            self.logger.error('错误_dispatch2：msg: %s', repr(msg)[:100])
-            
+            self._logger.error('错误_dispatch2：msg: %s', repr(msg)[:100])
+
     def _send(self, msg):
         if 'queue_name' not in msg or \
-            'message_data' not in msg or \
+                'message_data' not in msg or \
                 'message_id' not in msg or \
-                    'pub_date' not in msg:
-
-            self.logger.error('错误_send1：msg: %s', repr(msg)[:100])
+                'pub_date' not in msg:
+            self._logger.error('错误_send1：msg: %s', repr(msg)[:100])
             return
 
         queue_name = msg['queue_name']
@@ -140,7 +138,7 @@ class CompletelyPersistentProcess:
         message_id = msg['message_id']
         pub_date = msg['pub_date']
 
-        self._completely_persistent_process_db.\
+        self._completely_persistent_process_db. \
             insert_message_id_queue_name_message_data_pub_date(
             message_id,
             queue_name,
@@ -151,7 +149,7 @@ class CompletelyPersistentProcess:
     def _get(self, msg):
         if 'queue_name' not in msg or \
                 'message_id' not in msg:
-            self.logger.error('错误_get1：msg: %s', repr(msg)[:100])
+            self._logger.error('错误_get1：msg: %s', repr(msg)[:100])
             return
 
         # queue_name = msg['queue_name']
@@ -161,7 +159,7 @@ class CompletelyPersistentProcess:
 
     def _delete_queue(self, msg):
         if 'queue_name' not in msg:
-            self.logger.error('错误_delete_queue1：msg: %s', repr(msg)[:100])
+            self._logger.error('错误_delete_queue1：msg: %s', repr(msg)[:100])
             return
 
         queue_name = msg['queue_name']
@@ -193,7 +191,7 @@ class MQProcess:
 
 class AckProcess:
     logger = logging.getLogger('AckProcess')
-    
+
     def __init__(
             self,
             ack_process_db_file,
@@ -241,7 +239,7 @@ class AckProcess:
                         for row in rows:
                             message_id, queue_name, message_data, pub_date = row
                             if queue_name not in filter:
-                                pool.opera('declare_queue', *(queue_name, ))
+                                pool.opera('declare_queue', *(queue_name,))
                             t = Thread(target=pool.opera, args=(method_name, *(message_id, queue_name)))
                             t.start()
                             ts.append(t)
@@ -333,7 +331,6 @@ class AckProcess:
                 'queue_name' not in msg or \
                 'message_data' not in msg or \
                 'pub_date' not in msg:
-
             self.logger.error('错误_get1：msg: %s', repr(msg)[:100])
             return
 
@@ -381,11 +378,11 @@ class AckProcess:
                 break
             err += 1
 
-        pub_date = msg['pub_date'] # int
+        pub_date = msg['pub_date']  # int
 
         # 获取很久很久未确认的消息数据
         message_id_queue_name_message_data_pub_dates = self._ack_process_db.pagnation(pub_date)
-        while len(message_id_queue_name_message_data_pub_dates) < 100: # 小于100相当于是最后一页
+        while len(message_id_queue_name_message_data_pub_dates) < 100:  # 小于100相当于是最后一页
             for message_id_queue_name_message_data_pub_date in message_id_queue_name_message_data_pub_dates:
                 message_id = message_id_queue_name_message_data_pub_date[0]
                 queue_name = message_id_queue_name_message_data_pub_date[1]
@@ -406,7 +403,7 @@ class AckProcess:
         try:
             res_msg = client.send_data_to_queue(queue_name, message_data)
             self.logger.debug('_ack_retry: 重新发送任务: %s, %s, 服务器返回:%s',
-                         repr(queue_name), repr(message_data), repr(res_msg)[:100])
+                              repr(queue_name), repr(message_data), repr(res_msg)[:100])
             if res_msg['status'] == FAIL:  # 如果发送失败，重新放到数据库
                 return False
             return True
@@ -420,7 +417,7 @@ class AckProcess:
         try:
             res_msg = client.delete_ack_message_id_queue_name(message_id, queue_name)
             self.logger.debug('_ack_retry: 删除mmserver中的未确认ack内存: %s，%s, mmserver返回:%s',
-                         repr(message_id), repr(queue_name), repr(res_msg)[:100])
+                              repr(message_id), repr(queue_name), repr(res_msg)[:100])
             if res_msg['status'] == FAIL:  # 如果发送失败，我想我还是写log文件吧。
                 # TODO
                 return False

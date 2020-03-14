@@ -59,7 +59,7 @@ def _init_flask() -> (Flask, HTTPBasicAuth):
 
 _APP, _AUTH = _init_flask()
 _USER_NAME, _PASSWD, _PORT, _ACK_PROCESS_DB_FILE = _init_mmcli_config()
-USERS = [{
+_USERS = [{
     'user_name': _USER_NAME,
     'passwd': _PASSWD
 }]
@@ -73,8 +73,8 @@ def _get_passwd(user_name):
     自动调用的。
 
     """
-    global USERS
-    for user in USERS:
+    global _USERS
+    for user in _USERS:
         if user['user_name'] == user_name:
             return user['passwd']
         return None
@@ -494,7 +494,8 @@ def debug():
         _POOL = Pool('localhost', _PORT, _USER_NAME, _PASSWD, 10)
         _APP.run(host='0.0.0.0', port=15674)
     except: pass
-    finally: _POOL.release()
+    finally:
+        if _POOL: _POOL.release()
 
 
 def main():

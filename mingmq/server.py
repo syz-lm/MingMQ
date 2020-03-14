@@ -21,13 +21,13 @@ from mingmq.status import ServerStatus
 
 
 class Server:
-    logger = logging.getLogger('Server')
+    _logger = logging.getLogger('Server')
 
     def __init__(
-        self,
-        server_status: ServerStatus,
-        completely_persistent_process_queue: Queue,
-        ack_process_queue: Queue
+            self,
+            server_status: ServerStatus,
+            completely_persistent_process_queue: Queue,
+            ack_process_queue: Queue
     ):
         self._server_status = server_status
 
@@ -77,19 +77,19 @@ class Server:
                                   self._ack_process_queue)
                 Thread(target=handler.handle_thread_mode_read).start()
             except:
-                self.logger.error(traceback.format_exc())
+                self._logger.error(traceback.format_exc())
 
     def _epoll_mode(self):
         while True:
-            self.logger.info("等待活动连接，还有%d个连接。", len(self._fd_to_handler))
+            self._logger.info("等待活动连接，还有%d个连接。", len(self._fd_to_handler))
             events = self._epoll.poll(self._timeout)
             if not events:
-                self.logger.info("epoll超时无活动连接，重新轮询")
+                self._logger.info("epoll超时无活动连接，重新轮询")
             else:
                 self._loop_events(events)
 
     def _loop_events(self, events):
-        self.logger.info("有 %d个新事件，开始处理", len(events))
+        self._logger.info("有 %d个新事件，开始处理", len(events))
         for fd, event in events:  # 文件描述符，事件
             handler = self._fd_to_handler[fd]
 
@@ -127,42 +127,41 @@ class Server:
             else:
                 self._close_event(fd)
 
-
     def _new_conn_comming(self):
         try:
             conn, addr = self._sock.accept()
-            self.logger.info("新连接：%s", addr)
+            self._logger.info("新连接：%s", addr)
             conn.setblocking(False)  # 新连接socket设置为非阻塞
             self._epoll.register(conn.fileno(), select.EPOLLIN)  # 注册新连接fd到待读事件集合
             self._fd_to_handler[conn.fileno()] = Handler(conn, addr, self._queue_memory,
                                                          self._queue_ack_memory, self._stat_memory,
                                                          self._server_status, self._completely_persistent_process_queue,
                                                          self._ack_process_queue)
-        except: # 因为不知道会出现什么不可预知的问题。
-            self.logger.error(traceback.format_exc())
+        except:  # 因为不知道会出现什么不可预知的问题。
+            self._logger.error(traceback.format_exc())
 
     def _close_event(self, fd):
-        self.logger.info('client close, 还有%d个连接未释放。', len(self._fd_to_handler))
+        self._logger.info('client close, 还有%d个连接未释放。', len(self._fd_to_handler))
         try:
             self._epoll.unregister(fd)  # 在self._epoll中注销客户端的文件句柄
         except:
-            self.logger.error(traceback.format_exc())
+            self._logger.error(traceback.format_exc())
 
         try:
             self._fd_to_handler[fd].close()  # 关闭客户端的文件句柄
         except:
-            self.logger.error(traceback.format_exc())
+            self._logger.error(traceback.format_exc())
 
         try:
             del self._fd_to_handler[fd]  # 在字典中删除与已关闭客户端相关的信息
         except:
-            self.logger.error(traceback.format_exc())
+            self._logger.error(traceback.format_exc())
 
     def _readable_event(self, handler: Handler, fd):
         try:
             handler.handle_epoll_mode_read()
         except:
-            self.logger.error(traceback.format_exc())
+            self._logger.error(traceback.format_exc())
             self._close_event(fd)
             return
 
@@ -172,13 +171,13 @@ class Server:
             else:
                 self._epoll.modify(fd, select.EPOLLOUT)  # 修改句柄为可写事件
         except:
-            self.logger.error(traceback.format_exc())
+            self._logger.error(traceback.format_exc())
 
     def _writeable_event(self, handler: Handler, fd):
         try:
             handler.handle_epoll_mode_write()
         except:
-            self.logger.error(traceback.format_exc())
+            self._logger.error(traceback.format_exc())
             self._close_event(fd)
             return
 
@@ -195,4 +194,4 @@ class Server:
 
             self._sock.close()  # 关闭服务器socket
         except:
-            self.logger.error(traceback.format_exc())
+            self._logger.error(traceback.format_exc())

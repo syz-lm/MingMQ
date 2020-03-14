@@ -94,11 +94,7 @@ class Pool:
             self._que.append(cli)
 
     def get_conn(self):
-        """从连接池中获取一个连接；
-
-        :return: client连接；
-        :rtype: Client
-
+        """从连接池中获取一个连接，然后就可以用这个连接做自己想做的事
         这个是线程安全的，因为也是必须线程安全。在获取后，会发送ping
         消息给服务端，如果服务端响应了，证明这个连接是可用的，如果未
         响应，说明这个连接失效了，或者服务器不可用了。如果连接池中没有
@@ -106,7 +102,10 @@ class Pool:
         ，但是不会重新初始化连接池。连接池空时会抛出连接池已空的异常(
         ClientPoolEmpty)，另外，循环获取连接池中的连接，如果ping不通
         ，就再循环，直到ping通就返回conn，如若连接池都空了，则初始化连
-        接池，如果失败就不管了；
+        接池，如果失败就不管了；；
+
+        :return: client连接；
+        :rtype: Client
 
         """
         with Pool._LOCK:
@@ -135,21 +134,17 @@ class Pool:
                 return self._que.popleft()
 
     def back_conn(self, conn):
-        """将连接归还给连接池；
+        """将连接归还给连接池，这个操作是线程安全的；
 
         :param conn: 从连接池中取出的连接；
         :type conn: Client
-
-        这个操作是线程安全的；
 
         """
         with Pool._LOCK:
             self._que.append(conn)
 
     def release(self):
-        """释放连接池中所有连接；
-
-        这个操作是线程安全的；
+        """释放连接池中所有连接，这个操作是线程安全的；
 
         """
         with Pool._LOCK:
@@ -162,7 +157,8 @@ class Pool:
             self._que.clear()
 
     def opera(self, method_name, *args):
-        """用来向服务器发送请求；
+        """用来向服务器发送请求，如果没有返回数据，证明客户端与
+        服务器通信失败，所以就关闭连接，反之则归还连接到连接池；
 
         :param method_name: 方法名；
         :type method_name: str
@@ -171,9 +167,6 @@ class Pool:
 
         :return: 方法名调用后返回的结果；
         :rtype: dict
-
-        如果没有返回数据，证明客户端与服务器通信失败，所以就关闭连接
-        ，反之则归还连接到连接池；
 
         """
         conn = None
