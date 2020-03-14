@@ -302,7 +302,7 @@ class Handler:
                 task = Task(message_data)
                 if self._queue_memory.put(queue_name, task):
 
-                    pcppsm = PipeCompletelyPersistentProcessSendMessage(queue_name, message_data, task.message_id)
+                    pcppsm = PipeCompletelyPersistentProcessSendMessage(queue_name, message_data, task['message_id'])
                     self._completely_persistent_process_queue.put_nowait(pcppsm)
 
                     res_msg = ResMessage(MESSAGE_TYPE['SEND_DATA_TO_QUEUE'], SUCCESS, [])
@@ -324,12 +324,12 @@ class Handler:
                 task = self._queue_memory.get(queue_name)
 
                 if task is not None and \
-                        self._task_ack_memory.put(queue_name, task.message_id):
+                        self._task_ack_memory.put(queue_name, task['message_id']):
 
-                    papgm = PipeAckProcessGetMessage(task.message_id, queue_name, task.message_data)
+                    papgm = PipeAckProcessGetMessage(task['message_id'], queue_name, task['message_data'])
                     self._ack_process_queue.put_nowait(papgm)
 
-                    pcppgm = PipeCompletelyPersistentProcessGetMessage(queue_name, task.message_id)
+                    pcppgm = PipeCompletelyPersistentProcessGetMessage(queue_name, task['message_id'])
                     self._completely_persistent_process_queue.put_nowait(pcppgm)
 
                     res_msg = ResMessage(MESSAGE_TYPE['GET_DATA_FROM_QUEUE'], SUCCESS, [task])

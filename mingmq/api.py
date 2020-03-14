@@ -512,4 +512,4 @@ def main():
     except Exception as e:
         logging.error(e)
     finally:
-        _POOL.release()
+        if _POOL: _POOL.release()

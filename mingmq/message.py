@@ -266,19 +266,10 @@ class Task(dict):
                             一个字符串，比如说任务数据可能是爬虫抓取的一个网页的所有源代码
         :param message_data: str，任务数据字符串
         """
-        self.message_id = gen_message_id()
-        self.message_data = message_data
-
         super().__init__({
-            'message_id': self.message_id,
-            'message_data': self.message_data
+            'message_id': gen_message_id(),
+            'message_data': message_data
         })
-
-    def get_message_id(self):
-        """
-        获取任务id
-        """
-        return self.message_id
 
 
 def gen_message_id():

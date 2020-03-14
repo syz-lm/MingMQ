@@ -37,13 +37,18 @@ class Pool:
     """一个多线程的连接池。提供了一些方法的调用，但是用户只需要关心
     opera这个方法就够了，其它都已经封装好了。
 
+    类成员:
+
+    * ``_LOCK``: 连接池锁；
+    * ``_logger``: 用于打印日志的对象；
+
+    Command line example:
+
     >>> from mingmq.client import Pool
     >>> pool = Pool('localhost', 15673, 'mingmq', 'mm5201314', 10)
     >>> pool.opera("declare_queue", 'img')
     会有输出，但是这里先暂时没有
     >>> pool.release() # 关闭连接
-
-    用户使用起来是非常容易的。
 
     """
     _LOCK = Lock()
@@ -78,12 +83,17 @@ class Pool:
             self._que.append(cli)
 
     def get_conn(self):
-        """从连接池中获取一个连接，这个是线程安全的，因为也是必须线程
-        安全。在获取后，会发送ping消息给服务端，如果服务端响应了，证明
-        这个连接是可用的，如果未响应，说明这个连接失效了，或者服务器不
-        可用了。如果连接池中没有连接用了，会重新初始化连接，如果其中一个
-        连接失效了，会抛出异常，但是不会重新初始化连接池。连接池空时会抛
-        出连接池已空的异常(ClientPoolEmpty)。
+        """从连接池中获取一个连接；
+
+        :return: client连接；
+        :rtype: Client；
+
+        这个是线程安全的，因为也是必须线程安全。在获取后，会发送ping
+        消息给服务端，如果服务端响应了，证明这个连接是可用的，如果未
+        响应，说明这个连接失效了，或者服务器不可用了。如果连接池中没有
+        连接用了，会重新初始化连接，如果其中一个连接失效了，会抛出异常
+        ，但是不会重新初始化连接池。连接池空时会抛出连接池已空的异常(
+        ClientPoolEmpty)。
 
         """
         with Pool._LOCK:
@@ -103,19 +113,47 @@ class Pool:
                 return self._que.popleft()
 
     def back_conn(self, conn):
+        """将连接归还给连接池；
+
+        :param conn: 从连接池中取出的连接；
+        :type conn: Client；
+
+        这个操作是线程安全的；
+
+        """
         with Pool._LOCK:
             self._que.append(conn)
 
     def release(self):
-        for conn in self._que:
-            try:
-                if conn: conn.close()
-            except Exception:
-                self._logger.error(traceback.format_exc())
+        """释放连接池中所有连接；
 
-        self._que.clear()
+        这个操作是线程安全的；
+
+        """
+        with Pool._LOCK:
+            for conn in self._que:
+                try:
+                    if conn: conn.close()
+                except Exception:
+                    self._logger.error(traceback.format_exc())
+
+            self._que.clear()
 
     def opera(self, method_name, *args):
+        """用来向服务器发送请求；
+
+        :param method_name: 方法名；
+        :type method_name: str；
+        :param args: 方法名方法的参数；
+        :type args: 可变参数；
+
+        :return: 方法名调用后返回的结果；
+        :rtype: dict；
+
+        如果没有返回数据，证明客户端与服务器通信失败，所以就关闭连接
+        ，反之则归还连接到连接池；
+
+        """
         conn = None
         try:
             conn = self.get_conn()
@@ -136,7 +174,13 @@ class Pool:
             if conn: self.back_conn(conn)
 
     def all(self):
-        return [i for i in self._que]
+        """返回连接池中所有的连接；
+
+        :return: 连接数组；
+        :rtype: list；
+
+        """
+        with Pool._LOCK: return [i for i in self._que]
 
 
 class Client:

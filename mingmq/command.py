@@ -140,3 +140,7 @@ def _read_command_line(flags):
     completely_persistent_process.start()
 
     mq_process.join()
+
+
+if __name__ == '__main__':
+    main()
