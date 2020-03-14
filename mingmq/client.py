@@ -612,7 +612,7 @@ class Client:
                         self._connected = False
                         return False
             else:
-                self.logger.error('get_stat在发送了请求之后，服务器返回了空字符，当前req_pkg:%s', repr(req_ack_msg))
+                self.logger.error('get_stat在发送了请求之后，服务器返回了空字符，当前req_pkg:%s', repr(req_get_stat_msg))
 
                 self._connected = False
                 return False

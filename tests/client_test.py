@@ -1,25 +1,28 @@
-"""
-客户端启动测试
-"""
 import logging, time
 from threading import Thread, active_count
 
 from mingmq.client import Client
 
 logging.basicConfig(level=logging.ERROR)
+from unittest import TestCase
 
-# HTML = ''
-# with open('./test.html', encoding='utf-8') as file_desc:
-#     HTML = file_desc.read()
-#
+IP = 'serv_pro'
+PORT = 15673
+USER = 'mingmq'
+PASSWD = 'mm5201314'
+
+HTML = ''
+with open('./test.html', encoding='utf-8') as file_desc:
+    HTML = file_desc.read()
+
 
 def init_cli(first, queue_name):
     """
     客户端测试
     """
-    client = Client('192.168.1.30', 15673)
+    client = Client(IP, PORT)
 
-    client.login('mingmq', 'mm5201314')
+    client.login(USER, PASSWD)
 
     print('登录成功')
     if first:
@@ -88,8 +91,17 @@ def main(tsn, queue_name, data):
         close(cli)
 
 
-tsn = 1000
-queue_names = ['word']
-datas = ['hello teacher']
+class PressureTest(TestCase):
+    def test_short_message(self):
+        tsn = 1000
+        queue_names = ['word']
+        datas = ['hello teacher']
 
-main(tsn, queue_names[0], datas[0])
+        main(tsn, queue_names[0], datas[0])
+
+    def test_long_message(self):
+        tsn = 200
+        queue_names = [HTML]
+        datas = ['hello teacher']
+
+        main(tsn, queue_names[0], datas[0])

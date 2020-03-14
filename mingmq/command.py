@@ -1,8 +1,6 @@
 import argparse
 import platform
 import logging
-# logging.basicConfig(level=logging.INFO)
-logging.basicConfig(level = logging.ERROR, format = '%(levelname)s:%(asctime)s:%(name)s[%(message)s]')
 
 from multiprocessing import Queue, Process, freeze_support
 import json
@@ -14,7 +12,9 @@ from mingmq.utils import check_config
 from mingmq.process import MQProcess, AckProcess, CompletelyPersistentProcess
 
 
-def main():
+def main(log_level=logging.ERROR):
+    logging.basicConfig(level=log_level, format='%(levelname)s:%(asctime)s:%(name)s[%(message)s]')
+
     parser = argparse.ArgumentParser('欢迎使用MingMQ消息队列服务器。')
 
     parser.add_argument('--CONFIG_REUSE', type=int, default=0,
@@ -143,4 +143,4 @@ def _read_command_line(flags):
 
 
 if __name__ == '__main__':
-    main()
+    main(logging.DEBUG)

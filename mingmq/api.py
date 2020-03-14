@@ -514,3 +514,11 @@ def main():
         logging.error(e)
     finally:
         if _POOL: _POOL.release()
+
+
+if __name__ == '__main__':
+    import platform
+    if 'Linux' in platform.platform():
+        main()
+    else:
+        debug()

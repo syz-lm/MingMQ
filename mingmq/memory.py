@@ -1,13 +1,5 @@
 """
-这里是我一段伤感的历史
-----------------------------
-
-舍不得删
-^^^^^^^^^^
-
-以下代码片段是我舍不得删的代码。
-
-tcp数据分组算法(较差，能用)::
+以下代码片段是我舍不得删的代码，tcp数据分组算法(较差，能用)::
 
     def package_message(data):
         res_pkg = MessageWindow.MESSAGE_BEGIN + str_to_hex(data) + MessageWindow.MESSAGE_END
