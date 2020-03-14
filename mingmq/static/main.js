@@ -312,7 +312,7 @@ function pag_noack_task(page) {
                 for (var i = 0; i < data.data.length; i++) {
                     var message_id = data.data[i][0];
                     var queue_name = data.data[i][1];
-                    var t = data.data[i][2];
+                    var t = data.data[i][2] * 1000;
 
                     var date = new Date(t);
                     var d = date.toLocaleDateString();
