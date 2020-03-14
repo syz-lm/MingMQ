@@ -156,7 +156,7 @@ class PressureTest(TestCase):
         send_many(tsn, queue_names[0], datas[0])
 
     def test_short_message_send_many(self):
-        tsn = 200
+        tsn = 1000
         queue_names = ['word']
         datas = ['hello, world']
 
