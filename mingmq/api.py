@@ -80,9 +80,21 @@ def _get_passwd(user_name):
         return None
 
 
+@_APP.route('/get_message_data', methods=['POST'])
+@_AUTH.login_required
+def get_message_data():
+    """获取未确认的任务数据，根据message_id
+
+    """
+    message_id = request.form['message_id']
+    ack_msg = AckProcessDB(_ACK_PROCESS_DB_FILE)
+
+    return { 'data': ack_msg.get_message_data_by_message_id(message_id) }
+
+
 @_APP.route('/', methods=['GET'])
 @_AUTH.login_required
-def main():
+def index():
     """当用户访问"/"时返回对应的main.html模版。当用户
     第一次访问这个路径时，会提示用户输入账号密码。账号密码
     是MingMQ的账号密码。
@@ -401,7 +413,7 @@ def pag_noack_task():
     page = request.args.get('page')
     ack_msg = AckProcessDB(_ACK_PROCESS_DB_FILE)
     return {
-        "data": ack_msg.pagnation_page(int(page)),
+        "data": ack_msg.pagnation_page_no_msg_data(int(page)),
         'status': 1
     }
 
@@ -447,7 +459,7 @@ def get_noack_task_total_num():
     reuslt =  ack_msg.total_num()
     if reuslt and len(reuslt) > 0:
         return {
-            "total_pages": math.ceil(reuslt[0][0] / 25)
+            "total_pages": math.ceil(reuslt[0][0] / 100)
         }
     else:
         return {

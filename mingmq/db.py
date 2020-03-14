@@ -153,6 +153,32 @@ class AckProcessDB:
             if conn:
                 conn.close()
 
+    def pagnation_page_no_msg_data(self, page):
+        """
+        分页获取未确认的任务。
+        :param pub_date: 时间戳，若为None则表示不根据时间筛选，反之，则返回小于该时间的的数据。
+        :return: list: [message_id, queue_name, message_data, pub_date]
+        """
+        conn = None
+        c = None
+        try:
+            conn = connect(self._db_file)
+            c = conn.cursor()
+            sql = 'select message_id, queue_name, pub_date from ack_msg ' \
+                  'order by pub_date desc limit ?, 100'
+            args = ((page - 1) * 100, )
+
+            c.execute(sql, args)
+            result = c.fetchall()
+            return result
+        except Exception:
+            self._logger.debug(traceback.format_exc())
+        finally:
+            if c:
+                c.close()
+            if conn:
+                conn.close()
+
     def total_num(self):
         conn = None
         c = None
@@ -161,6 +187,25 @@ class AckProcessDB:
             c = conn.cursor()
             sql = 'select count(message_id) from ack_msg'
             c.execute(sql, )
+            result = c.fetchall()
+            return result
+        except Exception:
+            self._logger.debug(traceback.format_exc())
+        finally:
+            if c:
+                c.close()
+            if conn:
+                conn.close()
+
+    def get_message_data_by_message_id(self, message_id):
+        conn = None
+        c = None
+        try:
+            conn = connect(self._db_file)
+            c = conn.cursor()
+            sql = 'select message_data from ack_msg where message_id = ?'
+            args = (message_id, )
+            c.execute(sql, args)
             result = c.fetchall()
             return result
         except Exception:

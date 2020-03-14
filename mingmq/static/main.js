@@ -105,8 +105,6 @@ $(function () {
         $('.now').html(date + ' ' + time);
     }, 1000);
 
-    responsive();
-
     pag_noack_task(1);
     get_noack_task_total_num();
 });
@@ -291,14 +289,12 @@ function pag_noack_task(page) {
             "page": page
         },
         success: function (data) {
-            console.log(JSON.stringify(data));
             $(".current_page").html(page);
             var total_pages = $(".total_num").html();
             var hearder = ""+
                 "<tr class='task'>"+
                 "<th>队列</th>"+
                 "<th>任务ID</th>"+
-                "<th>数据</th>"+
                 "<th>时间</th>"+
                 "<th>删除</th>" +
                 "</tr>";
@@ -307,8 +303,8 @@ function pag_noack_task(page) {
                 '<td>总页数：<span class="total_num">' + total_pages + '</span></td>' +
                 '<td>当前页：<span class="current_page">' + page + '</span></td>' +
                 '<td><button class="refresh">刷新</button></td>' +
-                '<td><button class="pre_page">上一页</button></td>' +
-                '<td><button class="next_page">下一页</button></td>' +
+                '<td><button class="pre_page">上一页</button>' +
+                '<button class="next_page">下一页</button></td>' +
                 '</tr>';
             var html = '';
             if(data.data != null)
@@ -316,21 +312,18 @@ function pag_noack_task(page) {
                 for (var i = 0; i < data.data.length; i++) {
                     var message_id = data.data[i][0];
                     var queue_name = data.data[i][1];
-                    // var message_data = JSON.stringify({"data": data.data[i][2]});
-                    var message_data = data.data[i][2];
-                    var t = data.data[i][3];
+                    var t = data.data[i][2];
 
                     var date = new Date(t);
                     var d = date.toLocaleDateString();
                     var tt = date.toLocaleTimeString();
                     var dt = d + ' ' + tt;
 
-                    var bea = btoa(unescape(encodeURIComponent(message_data)));
+                    // var bea = btoa(unescape(encodeURIComponent(message_data)));
 
                     html += "<tr class='task'>" +
                         "<td class='queue_name' title='" + queue_name + "'>" + queue_name + "</td>" +
                         "<td class='message_id' title='" + message_id + "'>" + message_id + "</td>" +
-                        "<td class='data' title='base64编码过的数据，需要解码'>" + bea + "</td>" +
                         "<td class='dt' title='" + dt + "'>" + dt + "</td>" +
                         "<td><button class='delete'>delete</button></td>" +
                         "</tr>";
@@ -387,20 +380,36 @@ $("table").on('click', '.pag > td > .next_page', function () {
 });
 
 $(".close").click(function () {
-    $(".decode_data").hide();
+    $(".message_data").hide();
 });
 
-$("table").on('click', '.task > .data', function () {
-    var bda = decodeURIComponent(escape(atob($(this).html()).toString()));
-    $(".decode_data > ._message_id").html($(this).prev().html());
-    $(".decode_data > textarea").val(bda);
-    $(".decode_data").show();
+$("table").on('click', '.task > .message_id', function () {
+    var message_id = $(this).html();
+    $(".message_data > ._message_id").html(message_id);
+
+    $.ajax({
+        url: "/get_message_data",
+        type: 'POST',
+        cache: false,
+        contentType: "application/x-www-form-urlencoded",
+        dataType: "json",
+        data: {
+            message_id: message_id
+        },
+        success: function (data) {
+            $(".message_data > textarea").val(data.data[0][0]);
+            $(".message_data").show();
+        },
+        error: function (err) {
+        },
+        async: true
+    });
 });
 
 
 $("table").on('click', '.task > td > .delete', function () {
-    var queue_name = $($(this).parent().prevAll()[3]).html();
-    var message_id = $($(this).parent().prevAll()[2]).html()
+    var queue_name = $($(this).parent().prevAll()[2]).html();
+    var message_id = $($(this).parent().prevAll()[1]).html();
 
     if(confirm("要从服务器中删除这个未确认的任务吗？"))
         $.ajax({

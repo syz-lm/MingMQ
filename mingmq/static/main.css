@@ -93,7 +93,7 @@ audio {
     display: none;
     background: white;
     color: black;
-    width: 535px;
+    width: 435px;
     box-sizing: content-box;
     overflow-y: scroll;
     overflow-x: hidden;
@@ -107,7 +107,7 @@ audio {
 }
 
 .task_ids > table {
-    width: 510px;
+    width: 410px;
     word-break: break-all;
     word-wrap: break-word;
     table-layout: fixed; /* 设置这个之后，td内容超出长度就不会改变table的宽度了 */
@@ -140,9 +140,10 @@ audio {
     color: white;
 }
 
-.task > td:nth-of-type(5) > .delete {
+.task > td:nth-of-type(4) > .delete {
     width: 100%;
     height: 100%;
+    line-height: 100%;
 }
 
 .pag {
@@ -163,15 +164,15 @@ audio {
     background: black;
 }
 
-.pre_page { width: 100%;}
+.pre_page { width: 50%; }
 
-.next_page { width: 100%; }
+.next_page { width: 50%; }
 
 .refresh {
     width: 100%;
 }
 
-.decode_data {
+.message_data {
     position: fixed;
     width: 600px;
     height: 400px;
@@ -183,17 +184,17 @@ audio {
     border: solid 1px;
 }
 
-.decode_data > textarea {
+.message_data > textarea {
     width: 598px;
     height: 370px;
     cursor: crosshair;
 }
 
-.decode_data > button {
+.message_data > button {
     float: right;
 }
 
-.decode_data > ._message_id {
+.message_data > ._message_id {
     float: left;
     color: blue;
     border: solid 1px;

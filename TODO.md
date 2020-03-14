@@ -9,3 +9,4 @@
 K/V数据库 | READY | 这个貌似并不难
 服务器集群 | READY | 先了解为什么要集群
 容灾 | READY | 先了解什么是容灾
+sqlite查询有点卡 | READY |

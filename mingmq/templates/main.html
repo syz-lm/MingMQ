@@ -25,7 +25,6 @@
         <tr class="task">
             <th>队列</th>
             <th>任务ID</th>
-            <th>数据</th>
             <th>时间</th>
             <th>删除</th>
         </tr>
@@ -34,8 +33,10 @@
             <td>总页数：<span class="total_num">0</span></td>
             <td>当前页：<span class="current_page">1</span></td>
             <td><button class="refresh">刷新</button></td>
-            <td><button class="pre_page">上一页</button></td>
-            <td><button class="next_page">下一页</button></td>
+            <td>
+                <button class="pre_page">上一页</button>
+                <button class="next_page">下一页</button>
+            </td>
         </tr>
     </table>
 </div>
@@ -44,7 +45,7 @@
     <
 </div>
 
-<div class="decode_data">
+<div class="message_data">
     <textarea readonly="true"></textarea>
     <span class="_message_id"></span><button class="close">关闭</button>
 </div>

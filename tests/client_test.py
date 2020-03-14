@@ -6,14 +6,7 @@ from mingmq.client import Client
 logging.basicConfig(level=logging.ERROR)
 from unittest import TestCase
 
-IP = 'serv_pro'
-PORT = 15673
-USER = 'mingmq'
-PASSWD = 'mm5201314'
-
-HTML = ''
-with open('./test.html', encoding='utf-8') as file_desc:
-    HTML = file_desc.read()
+from .settings import *
 
 
 def init_cli(first, queue_name):
@@ -50,14 +43,20 @@ def get(client, queue_name):
         print('消息确认成功', client.ack_message(queue_name, message_id))
 
 
+def get_noack(client, queue_name):
+    message_data = client.get_data_from_queue(queue_name)
+
+    print('获取任务成功', message_data)
+
+
 def close(client):
-    client.logout('mingmq', 'mm5201314')
+    client.logout(USER, PASSWD)
     print('退出成功')
     client.close()
     print('关闭成功')
 
 
-def main(tsn, queue_name, data):
+def complete(tsn, queue_name, data):
     clis = []
 
     for i in range(tsn):
@@ -65,7 +64,6 @@ def main(tsn, queue_name, data):
             clis.append(init_cli(True, queue_name))
         else:
             clis.append(init_cli(False, queue_name))
-
 
     i = 0
     ts = []
@@ -91,17 +89,79 @@ def main(tsn, queue_name, data):
         close(cli)
 
 
+def send_many(tsn, queue_name, data):
+    clis = []
+
+    for i in range(tsn):
+        if i == 0:
+            clis.append(init_cli(True, queue_name))
+        else:
+            clis.append(init_cli(False, queue_name))
+
+    i = 0
+    ts = []
+    while i < len(clis):
+        t = Thread(target=send, args=(clis[i], queue_name, data))
+        t.start()
+        ts.append(t)
+        i += 1
+
+    for t in ts: t.join()
+
+    for cli in clis: close(cli)
+
+
+def get_many(tsn, queue_name):
+    clis = []
+
+    for i in range(tsn):
+        if i == 0:
+            clis.append(init_cli(True, queue_name))
+        else:
+            clis.append(init_cli(False, queue_name))
+
+    i = 0
+    ts = []
+    while i < len(clis):
+        t = Thread(target=get_noack, args=(clis[i], queue_name))
+        t.start()
+        ts.append(t)
+        i += 1
+
+    for t in ts: t.join()
+
+    for cli in clis: close(cli)
+
+
 class PressureTest(TestCase):
-    def test_short_message(self):
+    def test_short_message_completely(self):
         tsn = 1000
         queue_names = ['word']
-        datas = ['hello teacher']
+        datas = ['hello, world']
 
-        main(tsn, queue_names[0], datas[0])
+        complete(tsn, queue_names[0], datas[0])
 
-    def test_long_message(self):
+    def test_long_message_completely(self):
         tsn = 200
-        queue_names = [HTML]
-        datas = ['hello teacher']
+        queue_names = ['web_page']
+        datas = [HTML]
 
-        main(tsn, queue_names[0], datas[0])
+        complete(tsn, queue_names[0], datas[0])
+
+    def test_long_message_send_many(self):
+        tsn = 200
+        queue_names = ['web_page']
+        datas = [HTML]
+
+        send_many(tsn, queue_names[0], datas[0])
+
+    def test_short_message_send_many(self):
+        tsn = 200
+        queue_names = ['word']
+        datas = ['hello, world']
+
+        send_many(tsn, queue_names[0], datas[0])
+
+    def test_long_message_get_many(self):
+        tsn = 200
+        get_many(tsn, 'web_page')
