@@ -16,7 +16,7 @@ setup(
         'flask',
         'flask_httpauth',
         'netifaces',
-        'gevent'
+        'gevent',
     ],
     entry_points="""
     [console_scripts]

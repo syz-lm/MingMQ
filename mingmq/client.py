@@ -102,7 +102,7 @@ class Pool:
         ，但是不会重新初始化连接池。连接池空时会抛出连接池已空的异常(
         ClientPoolEmpty)，另外，循环获取连接池中的连接，如果ping不通
         ，就再循环，直到ping通就返回conn，如若连接池都空了，则初始化连
-        接池，如果失败就不管了；；
+        接池，如果失败就不管了；
 
         :return: client连接；
         :rtype: Client
