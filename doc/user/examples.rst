@@ -7,7 +7,7 @@ CRUD
 
 The following examples make use of a simple queue
 
-..code:: python
+.. code:: python
 
     import sys
     from mingmq.client import Pool
