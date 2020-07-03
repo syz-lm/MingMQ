@@ -2,7 +2,7 @@ import argparse
 import platform
 import logging
 
-from multiprocessing import Queue, Process, freeze_support
+from multiprocessing import Queue, Process, freeze_support, active_children
 import json
 import time
 
@@ -121,7 +121,6 @@ def _read_command_line(flags):
     mmserver = MQProcess(server_status, completely_persistent_process_queue, ack_process_queue)
     mq_process = Process(target=mmserver.serv_forever)
     mq_process.start()
-    time.sleep(5)
 
     ackp = AckProcess(bd['ACK_PROCESS_DB_FILE'], bd['HOST'], bd['PORT'],
                       bd['USER_NAME'], bd['PASSWD'], ack_process_queue)
@@ -137,6 +136,11 @@ def _read_command_line(flags):
 
     ack_process.start()
     completely_persistent_process.start()
+
+    while True:
+        for p in active_children():
+            logging.debug('child process name: %s, id: %s', p.name, p.id)
+        time.sleep(30)
 
 
 

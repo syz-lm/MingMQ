@@ -3,6 +3,8 @@
 import logging
 import traceback
 import math
+import socket
+import time
 
 from multiprocessing import Queue
 from mingmq.db import AckProcessDB, CompletelyPersistentProcessDB
@@ -95,6 +97,21 @@ class CompletelyPersistentProcess:
 
     def serv_forever(self):
         self._logger.debug('CompletelyPersistentProcess 正在启动')
+        while True:
+            test_socket = None
+            try:
+                test_socket = socket.socket()
+                test_socket.connect((self._client_host, self._client_port))
+                break
+            except:
+                self.logger.error('CompletelyPersistentProcess 正在测试与服务器的连接，连接失败，30秒后即将重试')
+                time.sleep(30)
+                continue
+            finally:
+                try:
+                    if test_socket: test_socket.close()
+                except:
+                    self.logger.error('CompletelyPersistentProcess 关闭测试套接字失败, %s', traceback.format_exc())
 
         Process(target=self._load_send_db_memory).start()
 
@@ -274,6 +291,22 @@ class AckProcess:
 
     def serv_forever(self):
         self.logger.debug('AckProcess 正在启动')
+        while True:
+            test_socket = None
+            try:
+                test_socket = socket.socket()
+                test_socket.connect((self._client_host, self._client_port))
+                break
+            except:
+                self.logger.error('AckProcess 正在测试与服务器的连接，连接失败，30秒后即将重试')
+                time.sleep(30)
+                continue
+            finally:
+                try:
+                    if test_socket: test_socket.close()
+                except:
+                    self.logger.error('AckProcess 关闭测试套接字失败, %s', traceback.format_exc())
+
         Process(target=self._load_send_db_memory).start()
 
         while True:
