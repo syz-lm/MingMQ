@@ -120,7 +120,6 @@ def _read_command_line(flags):
 
     mmserver = MQProcess(server_status, completely_persistent_process_queue, ack_process_queue)
     mq_process = Process(target=mmserver.serv_forever)
-    mq_process.daemon = True
     mq_process.start()
     time.sleep(5)
 
@@ -139,7 +138,6 @@ def _read_command_line(flags):
     ack_process.start()
     completely_persistent_process.start()
 
-    mq_process.join()
 
 
 if __name__ == '__main__':
