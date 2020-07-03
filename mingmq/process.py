@@ -37,8 +37,6 @@ class CompletelyPersistentProcess:
         self._client_user = client_user
         self._client_passwd = client_passwd
 
-        self._test_client()
-
     def _test_client(self):
         client = Client(self._client_host, self._client_port)
         msg = client.login(self._client_user, self._client_passwd)
@@ -96,7 +94,7 @@ class CompletelyPersistentProcess:
             self._logger.error(traceback.format_exc())
 
     def serv_forever(self):
-        self._logger.debug('CompletelyPersistentProcess 正在启动')
+        self._logger.debug('正在启动')
         while True:
             test_socket = None
             try:
@@ -104,14 +102,16 @@ class CompletelyPersistentProcess:
                 test_socket.connect((self._client_host, self._client_port))
                 break
             except:
-                self.logger.error('CompletelyPersistentProcess 正在测试与服务器的连接，连接失败，30秒后即将重试')
+                self.logger.error('正在测试与服务器的连接，连接失败，30秒后即将重试')
                 time.sleep(30)
                 continue
             finally:
                 try:
                     if test_socket: test_socket.close()
                 except:
-                    self.logger.error('CompletelyPersistentProcess 关闭测试套接字失败, %s', traceback.format_exc())
+                    self.logger.error('关闭测试套接字失败, %s', traceback.format_exc())
+
+        self._test_client()
 
         Process(target=self._load_send_db_memory).start()
 
@@ -229,7 +229,7 @@ class AckProcess:
         self._ack_process_queue = ack_process_queue
         self._client = None
 
-        self._test_client()
+        # self._test_client()
 
     def _load_send_db_memory(self):
         try:
@@ -290,7 +290,7 @@ class AckProcess:
         client.close()
 
     def serv_forever(self):
-        self.logger.debug('AckProcess 正在启动')
+        self.logger.debug('正在启动')
         while True:
             test_socket = None
             try:
@@ -298,14 +298,16 @@ class AckProcess:
                 test_socket.connect((self._client_host, self._client_port))
                 break
             except:
-                self.logger.error('AckProcess 正在测试与服务器的连接，连接失败，30秒后即将重试')
+                self.logger.error('正在测试与服务器的连接，连接失败，30秒后即将重试')
                 time.sleep(30)
                 continue
             finally:
                 try:
                     if test_socket: test_socket.close()
                 except:
-                    self.logger.error('AckProcess 关闭测试套接字失败, %s', traceback.format_exc())
+                    self.logger.error('关闭测试套接字失败, %s', traceback.format_exc())
+
+        self._test_client()
 
         Process(target=self._load_send_db_memory).start()
 

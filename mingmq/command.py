@@ -12,7 +12,10 @@ from mingmq.utils import check_config
 from mingmq.process import MQProcess, AckProcess, CompletelyPersistentProcess
 
 
+LOGGER = logging.getLogger('Main')
+
 def main(log_level=logging.ERROR):
+    global LOGGER
     logging.basicConfig(level=log_level, format='%(levelname)s:%(asctime)s:%(name)s[%(message)s]')
 
     parser = argparse.ArgumentParser('欢迎使用MingMQ消息队列服务器。')
@@ -56,29 +59,30 @@ def main(log_level=logging.ERROR):
         _read_command_line(flags)
     except KeyboardInterrupt:
         import traceback
-        logging.error(traceback.format_exc())
+        LOGGER.error(traceback.format_exc())
 
 
 def _read_command_line(flags):
+    global LOGGER
     check_result = check_config(flags)
 
     if check_result == 0:
-        logging.debug('FLAGS出现问题。')
+        LOGGER.debug('FLAGS出现问题。')
         return
     elif check_result == 1:
-        logging.debug('HOST输入有误。')
+        LOGGER.debug('HOST输入有误。')
         return
     elif check_result == 2:
-        logging.debug('PORT输入有误。')
+        LOGGER.debug('PORT输入有误。')
         return
     elif check_result == 3:
-        logging.debug('USER_NAME 或者 PASSWD 输入有误。')
+        LOGGER.debug('USER_NAME 或者 PASSWD 输入有误。')
         return
     elif check_result == 4:
-        logging.debug('确认消息文件路径错误。')
+        LOGGER.debug('确认消息文件路径错误。')
         return
     elif check_result == 5:
-        logging.debug('发送消息文件路径错误。')
+        LOGGER.debug('发送消息文件路径错误。')
         return
 
     bd = dict()
@@ -100,10 +104,10 @@ def _read_command_line(flags):
             # ensure_ascii写中文, indent 格式化json
             bd = json.load(f)
     else:
-        logging.error('您是否要使用上一次使用过的配置来启动服务。')
+        LOGGER.error('您是否要使用上一次使用过的配置来启动服务。')
         return
 
-    logging.debug('正在启动，服务器的配置为\nIP/端口:%s:%d, 用户名/密码:%s/%s，'
+    LOGGER.debug('正在启动，服务器的配置为\nIP/端口:%s:%d, 用户名/密码:%s/%s，'
           '最大并发数:%d，超时时间: %d，服务器配置路径: %s，'
           '服务器确认消息文件名: %s，服务器发送消息文件名: %s' %
           (bd['HOST'], bd['PORT'], bd['USER_NAME'], bd['PASSWD'],
@@ -139,7 +143,8 @@ def _read_command_line(flags):
 
     while True:
         for p in active_children():
-            logging.debug('child process name: %s, id: %s', p.name, p.id)
+            LOGGER.debug('监控，子进程名: %s, PID: %s', p.name, p.pid)
+
         time.sleep(30)
 
 
