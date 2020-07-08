@@ -68,9 +68,11 @@ class AckProcessDB:
             c.execute(sql, args)
             self._logger.debug('[%s][%s] 影响的行数: %s', repr(sql), repr(args)[:100], repr(c.rowcount))
             conn.commit()
+            return c.rowcount
         except Exception:
             if conn: conn.rollback()
             self._logger.debug(traceback.format_exc())
+            return 0
         finally:
             if c:
                 c.close()

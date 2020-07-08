@@ -199,3 +199,17 @@ audio {
     color: blue;
     border: solid 1px;
 }
+
+.tools_panel {
+    width: 540px;
+    float: left;
+}
+
+.resend_interval_panel {
+    width: 540px;
+    float: right;
+}
+
+.resend_interval_panel > #resend_interval {
+    width: 100px;
+}

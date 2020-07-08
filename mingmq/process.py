@@ -5,6 +5,7 @@ import traceback
 import math
 import socket
 import time
+import json
 
 from multiprocessing import Queue
 from mingmq.db import AckProcessDB, CompletelyPersistentProcessDB
@@ -15,6 +16,7 @@ from mingmq.server import Server
 from mingmq.client import Pool
 from threading import Thread
 from multiprocessing import Process
+from mingmq.settings import CONFIG_FILE
 
 
 class CompletelyPersistentProcess:
@@ -46,6 +48,25 @@ class CompletelyPersistentProcess:
 
         client.logout(self._client_user, self._client_passwd)
         client.close()
+
+    def load_send_db_memory(self):
+        while True:
+            test_socket = None
+            try:
+                test_socket = socket.socket()
+                test_socket.connect((self._client_host, self._client_port))
+                break
+            except:
+                self.logger.error('正在测试与服务器的连接，连接失败，5秒后即将重试')
+                time.sleep(5)
+                continue
+            finally:
+                try:
+                    if test_socket: test_socket.close()
+                except:
+                    self.logger.error('关闭测试套接字失败, %s', traceback.format_exc())
+
+        self._load_send_db_memory()
 
     def _load_send_db_memory(self):
         try:
@@ -95,26 +116,6 @@ class CompletelyPersistentProcess:
 
     def serv_forever(self):
         self._logger.debug('正在启动')
-        while True:
-            test_socket = None
-            try:
-                test_socket = socket.socket()
-                test_socket.connect((self._client_host, self._client_port))
-                break
-            except:
-                self.logger.error('正在测试与服务器的连接，连接失败，30秒后即将重试')
-                time.sleep(30)
-                continue
-            finally:
-                try:
-                    if test_socket: test_socket.close()
-                except:
-                    self.logger.error('关闭测试套接字失败, %s', traceback.format_exc())
-
-        self._test_client()
-
-        Process(target=self._load_send_db_memory).start()
-
         while True:
             try:
                 msg = self._completely_persistent_process_queue.get()
@@ -231,6 +232,25 @@ class AckProcess:
 
         # self._test_client()
 
+    def load_send_db_memory(self):
+        while True:
+            test_socket = None
+            try:
+                test_socket = socket.socket()
+                test_socket.connect((self._client_host, self._client_port))
+                break
+            except:
+                self.logger.error('正在测试与服务器的连接，连接失败，5秒后即将重试')
+                time.sleep(5)
+                continue
+            finally:
+                try:
+                    if test_socket: test_socket.close()
+                except:
+                    self.logger.error('关闭测试套接字失败, %s', traceback.format_exc())
+
+        self._load_send_db_memory()
+
     def _load_send_db_memory(self):
         try:
             self.logger.debug('正在恢复数据ack。')
@@ -291,26 +311,6 @@ class AckProcess:
 
     def serv_forever(self):
         self.logger.debug('正在启动')
-        while True:
-            test_socket = None
-            try:
-                test_socket = socket.socket()
-                test_socket.connect((self._client_host, self._client_port))
-                break
-            except:
-                self.logger.error('正在测试与服务器的连接，连接失败，30秒后即将重试')
-                time.sleep(30)
-                continue
-            finally:
-                try:
-                    if test_socket: test_socket.close()
-                except:
-                    self.logger.error('关闭测试套接字失败, %s', traceback.format_exc())
-
-        self._test_client()
-
-        Process(target=self._load_send_db_memory).start()
-
         while True:
             try:
                 msg = self._ack_process_queue.get()
@@ -459,3 +459,95 @@ class AckProcess:
             return True
         except:
             return False
+
+
+class NoAckProcess:
+    """这个进程用于隔一段时间将未确认的任务重新推送到队列。
+
+    """
+    logger = logging.getLogger('NoAckProcess')
+
+    def __init__(
+            self,
+            ack_process_db_file,
+            client_host,
+            client_port,
+            client_user,
+            client_passwd
+    ):
+        self._ack_process_db: AckProcessDB = AckProcessDB(ack_process_db_file)
+        self._ack_process_db.create_table()
+
+        self._client_host = client_host
+        self._client_port = client_port
+        self._client_user = client_user
+        self._client_passwd = client_passwd
+
+    def _read_resend_interval(self):
+        f = open(CONFIG_FILE, 'r')
+        config = json.load(f)
+        f.close()
+        return config['RESEND_INTERVAL']
+
+    def _sleep(self, resend_interval):
+        time.sleep(resend_interval)
+
+    def _delete_row_ack_db(self, message_id):
+        return self._ack_process_db.delete_by_message_id(message_id)
+
+    def _task(self, queue_name, message_data, message_id, pool):
+        conn: Client = None
+        try:
+            conn = pool.get_conn()
+
+            self.logger.debug('即将重新推送到队列的数据为: %s', (queue_name, message_data, message_id))
+            res = conn.send_data_to_queue(queue_name, message_data)
+            if res and res['status'] != FAIL:
+                self.logger.debug('重新很久未ack的数据推送到队列成功')
+                res = conn.ack_message(queue_name, message_id)
+                if res and res['status'] != FAIL:
+                    if self._delete_row_ack_db(message_id) < 0:
+                        self.logger.error('删除ack_db失败，message_id: %s', message_id)
+                else:
+                    self.logger.debug('消息重新推送陈宫，但是，统计内存中的未确认数没有递减成功')
+            else:
+                self.logger.debug('消息重新推送失败, %s，可能是因为mq内存刚刚启动，请等待一下下一次检查', res)
+        except:
+            self.logger.error(traceback.format_exc())
+        finally:
+            if conn: pool.back_conn(conn)
+
+    def serv_forever(self):
+        while True:
+            resend_interval = self._read_resend_interval()
+            self._sleep(resend_interval)
+
+            pool = None
+            rows_len = 0
+            try:
+                pool = Pool(self._client_host, self._client_port, self._client_user, self._client_passwd, 100)
+
+                current_timestamp = int(time.time())
+                by_pub_date = current_timestamp - resend_interval
+
+                tasks = []
+                rows = self._ack_process_db.pagnation(by_pub_date)
+                rows_len = len(rows)
+                for row in rows:
+                    message_id, queue_name, message_data, pub_date = row
+                    task = Thread(target=self._task,
+                                  args=(queue_name, message_data, message_id, pool))
+                    tasks.append(task)
+                    task.start()
+
+                for task in tasks:
+                    task.join()
+            except:
+                self.logger.error(traceback.format_exc())
+            finally:
+                if rows_len < 100:
+                    self._sleep(resend_interval)
+                    try:
+                        if pool: pool.release()
+                    except:
+                        self.logger.error(traceback.format_exc())

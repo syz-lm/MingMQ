@@ -42,6 +42,20 @@ def _init_mmcli_config() -> (str, str, int, str):
 
     return user_name, passwd, port, ack_process_db_file
 
+def _load_mingmq_config() -> dict:
+    """读取MingMQ的配置文件到dict
+
+    """
+    with open(CONFIG_FILE, 'r') as f:
+        return json.load(f)
+
+def _dump_mingmq_config(config_dict: dict):
+    """将修改后的RESEND_INTERVAL写入到MingMQ的配置文件
+
+    """
+    with open(CONFIG_FILE, 'w') as f:
+        json.dump(config_dict, f, ensure_ascii=False, indent=4)
+
 
 def _init_flask() -> (Flask, HTTPBasicAuth):
     """创建一个Flask APP对象，设置静态文件的缓存时间，以及HTTP Basic认证对象。
@@ -284,22 +298,27 @@ def get_all():
     成功::
 
         {
-            "json_obj": [{
-                "queue_infor": {
-                    "asfas": [1, 4900]
-                },
-                "speed_infor": {
-                    "ack_asfas": 0,
-                    "ack_word": 0,
-                    "get_asfas": 0,
-                    "get_word": 0,
-                    "send_asfas": 0,
-                    "send_word": 0
-                },
-                "task_ack_infor": {
-                    "asfas": [0, 216]
+            "json_obj": [
+                {
+                    "queue_infor": {
+                        "11": [
+                            128,
+                            66633
+                        ]
+                    },
+                    "speed_infor": {
+                        "ack_11": 0,
+                        "get_11": 0,
+                        "send_11": 0
+                    },
+                    "task_ack_infor": {
+                        "11": [
+                            2,
+                            365
+                        ]
+                    }
                 }
-            }],
+            ],
             "status": 1,
             "type": 11
         }
@@ -418,7 +437,6 @@ def pag_noack_task():
     }
 
 
-
 @_APP.route('/get_noack_task_total_num')
 @_AUTH.login_required
 def get_noack_task_total_num():
@@ -497,6 +515,68 @@ def delete_ack_message():
     if result: return result
 
 
+@_APP.route('/get_resend_interval', methods=['POST'])
+@_AUTH.login_required
+def get_resend_interval():
+    """获取重发未确认任务的时间间隔RESEND_INTERVAL的值。
+
+    用户需要登录，并且访问"/get_resend_interval"。
+
+    Examples.
+
+    失败::
+
+        暂无
+
+    成功::
+
+        {
+            "json_obj": [{
+                            "resend_interval": xxx
+                        }],
+            "status": 1
+        }
+
+    """
+    config: dict = _load_mingmq_config()
+    resend_interval = config['RESEND_INTERVAL']
+    return {"json_obj": [{"resend_interval": resend_interval}], "status": 1}
+
+
+@_APP.route('/edit_resend_interval', methods=['POST'])
+@_AUTH.login_required
+def edit_resend_interval():
+    """修改重发未确认任务的时间间隔RESEND_INTERVAL的值。
+
+    用户需要登录，并且访问"/edit_resend_interval"，并且
+    还要带post表单参数，resend_interval。
+
+    Examples.
+
+    失败::
+
+        暂无
+
+    成功::
+
+        {
+            "json_obj": [],
+            "status": 1
+        }
+
+    """
+    resend_interval: str = request.form['resend_interval']
+    resend_interval = int(resend_interval)
+    if resend_interval < 60:
+        return {"json_obj": [], "status": 0}
+
+    config: dict = _load_mingmq_config()
+    config['RESEND_INTERVAL'] = resend_interval
+    _dump_mingmq_config(config)
+
+    return {"json_obj": [], "status": 1}
+
+
 def debug():
     """在开发模式下使用
 
@@ -529,8 +609,4 @@ def main():
 
 
 if __name__ == '__main__':
-    import platform
-    if 'Linux' in platform.platform():
-        main()
-    else:
-        debug()
+    debug()

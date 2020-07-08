@@ -9,7 +9,7 @@ import time
 from mingmq.status import ServerStatus
 from mingmq.settings import CONFIG_FILE
 from mingmq.utils import check_config
-from mingmq.process import MQProcess, AckProcess, CompletelyPersistentProcess
+from mingmq.process import MQProcess, AckProcess, CompletelyPersistentProcess, NoAckProcess
 
 
 LOGGER = logging.getLogger('Main')
@@ -54,6 +54,8 @@ def main(log_level=logging.ERROR):
     parser.add_argument('--COMPLETELY_PERSISTENT_PROCESS_DB_FILE', type=str, default=completely_persistent_process_db_file,
                         help='输入服务器确认消息文件名')
 
+    parser.add_argument('--RESEND_INTERVAL', type=int, default=300, help='输入将未ack的任务重新推送到队列的时间间隔')
+
     flags = parser.parse_args()
     try:
         _read_command_line(flags)
@@ -95,6 +97,7 @@ def _read_command_line(flags):
         bd['TIMEOUT'] = flags.TIMEOUT
         bd['ACK_PROCESS_DB_FILE'] = flags.ACK_PROCESS_DB_FILE
         bd['COMPLETELY_PERSISTENT_PROCESS_DB_FILE'] = flags.COMPLETELY_PERSISTENT_PROCESS_DB_FILE
+        bd['RESEND_INTERVAL'] = flags.RESEND_INTERVAL
 
         with open(CONFIG_FILE, 'w') as f:
             # ensure_ascii写中文, indent 格式化json
@@ -109,10 +112,11 @@ def _read_command_line(flags):
 
     LOGGER.debug('正在启动，服务器的配置为\nIP/端口:%s:%d, 用户名/密码:%s/%s，'
           '最大并发数:%d，超时时间: %d，服务器配置路径: %s，'
-          '服务器确认消息文件名: %s，服务器发送消息文件名: %s' %
+          '服务器确认消息文件名: %s，服务器发送消息文件名: %s,'
+          '重发未ACK任务的时间间隔: %d' %
           (bd['HOST'], bd['PORT'], bd['USER_NAME'], bd['PASSWD'],
            bd['MAX_CONN'], bd['TIMEOUT'], CONFIG_FILE, bd['ACK_PROCESS_DB_FILE'],
-           bd['COMPLETELY_PERSISTENT_PROCESS_DB_FILE']))
+           bd['COMPLETELY_PERSISTENT_PROCESS_DB_FILE'], bd['RESEND_INTERVAL']))
 
     server_status = ServerStatus(bd['HOST'], bd['PORT'], bd['MAX_CONN'],
                                  bd['USER_NAME'], bd['PASSWD'], bd['TIMEOUT'])
@@ -123,30 +127,37 @@ def _read_command_line(flags):
     freeze_support() # 这行没有不能fork
 
     mmserver = MQProcess(server_status, completely_persistent_process_queue, ack_process_queue)
-    mq_process = Process(target=mmserver.serv_forever)
-    mq_process.start()
+    mq_process = Process(target=mmserver.serv_forever, name='mq_process')
+    mq_process.start() # mq服务器第一启动
 
     ackp = AckProcess(bd['ACK_PROCESS_DB_FILE'], bd['HOST'], bd['PORT'],
                       bd['USER_NAME'], bd['PASSWD'], ack_process_queue)
+    ackp.load_send_db_memory() # 恢复数据到内存
 
-    ack_process = Process(target=ackp.serv_forever)
-
+    ack_process = Process(target=ackp.serv_forever, name='ack_process')
 
     cpp = CompletelyPersistentProcess(bd['COMPLETELY_PERSISTENT_PROCESS_DB_FILE'],
                                       completely_persistent_process_queue,
                                       bd['HOST'], bd['PORT'],
                                       bd['USER_NAME'], bd['PASSWD'])
-    completely_persistent_process = Process(target=cpp.serv_forever)
+    cpp.load_send_db_memory() # 恢复数据到内存
+
+    completely_persistent_process = Process(target=cpp.serv_forever, name='completely_persistent_process')
 
     ack_process.start()
     completely_persistent_process.start()
+
+    noap = NoAckProcess(bd['ACK_PROCESS_DB_FILE'], bd['HOST'], bd['PORT'],
+                        bd['USER_NAME'], bd['PASSWD'])
+
+    no_ack_process = Process(target=noap.serv_forever, name='no_ack_process')
+    no_ack_process.start()
 
     while True:
         for p in active_children():
             LOGGER.debug('监控，子进程名: %s, PID: %s', p.name, p.pid)
 
         time.sleep(30)
-
 
 
 if __name__ == '__main__':

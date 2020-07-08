@@ -107,6 +107,8 @@ $(function () {
 
     pag_noack_task(1);
     get_noack_task_total_num();
+
+    get_resend_interval();
 });
 
 $(window).resize(function () {
@@ -430,4 +432,47 @@ $("table").on('click', '.task > td > .delete', function () {
             },
             async: true
         });
+});
+
+function get_resend_interval() {
+    $.ajax({
+        url: "/get_resend_interval",
+        type: 'POST',
+        cache: false,
+        contentType: "application/x-www-form-urlencoded",
+        dataType: "json",
+        success: function (data) {
+            var jd = JSON.stringify(data);
+            // alert(jd);
+            $("#resend_interval").val(data.json_obj[0].resend_interval);
+        },
+        error: function (err) {
+        },
+        async: true
+    });
+}
+
+function edit_resend_interval(resend_interval) {
+    $.ajax({
+        url: "/edit_resend_interval",
+        type: 'POST',
+        cache: false,
+        contentType: "application/x-www-form-urlencoded",
+        dataType: "json",
+        data: {
+            'resend_interval': resend_interval
+        },
+        success: function (data) {
+            var jd = JSON.stringify(data);
+            alert(jd);
+        },
+        error: function (err) {
+        },
+        async: true
+    });
+}
+
+$("#resend_interval").change(function () {
+    var resend_interval = $(this).val();
+    edit_resend_interval(resend_interval);
 });

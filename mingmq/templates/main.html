@@ -13,8 +13,14 @@
     <button class="logout">退出</button>
 </div>
 <div class="content">
-    <span class="now"></span>
-    <button class="create_queue">创建队列</button>
+    <div class="tools_panel">
+        <span class="now"></span>
+    </div>
+    <div class="resend_interval_panel">
+        <label for="resend_interval">重发任务时间:</label>
+        <input type="number" id="resend_interval" min="60">（秒）
+        <button class="create_queue">创建队列</button>
+    </div>
     <table class="stat_infor" border="1">
     </table>
 </div>
