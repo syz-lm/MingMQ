@@ -520,7 +520,6 @@ class NoAckProcess:
     def serv_forever(self):
         while True:
             resend_interval = self._read_resend_interval()
-            self._sleep(resend_interval)
 
             pool = None
             rows_len = 0
@@ -546,8 +545,8 @@ class NoAckProcess:
                 self.logger.error(traceback.format_exc())
             finally:
                 if rows_len < 100:
-                    self._sleep(resend_interval)
                     try:
                         if pool: pool.release()
                     except:
                         self.logger.error(traceback.format_exc())
+                    self._sleep(resend_interval)
