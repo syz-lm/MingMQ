@@ -1,7 +1,7 @@
 # MingMQ
 
 [文档](http://serv_pro:5000/MingMQ/)，
-[TODO](http://serv_pro:3000/zswj123/MingMQ/src/master/TODO.md)
+[TODO](http://serv_pro:3000/kael/MingMQ/src/master/TODO.md)
 
 一个跨平台MQ消息服务，支持和RabbitMQ服务器的大多数功能。
 
