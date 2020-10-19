@@ -43,6 +43,6 @@ IP/端口:0.0.0.0:15673, 用户名/密码:mingmq/mm5201314，最大并发数:100
 $ mmweb
 ```
 
-![](http://serv_pro:3000/zswj123/MingMQ/raw/master/web_console.png)
+![](http://serv_pro:3000/kael/MingMQ/raw/master/web_console.png)
 
 默认端口15674。
