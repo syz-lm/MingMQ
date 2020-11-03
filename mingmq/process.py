@@ -374,7 +374,7 @@ class AckProcess:
         message_id = msg['message_id']
         queue_name = msg['queue_name']
         message_data = msg['message_data']
-        pub_date = msg['pub_date']
+        pub_date = int(msg['pub_date'])
 
         self._ack_process_db.insert_message_id_queue_name_message_data_pub_date(
             message_id,

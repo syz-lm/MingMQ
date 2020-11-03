@@ -400,7 +400,7 @@ class Client:
                 self._connected = False
                 return False
 
-    def send_data_to_queue(self, queue_name, message_data):
+    def send_data_to_queue(self, queue_name: str, message_data: str):
         """
         向队列中发送数据
         """
@@ -437,7 +437,7 @@ class Client:
                 self._connected = False
                 return False
 
-    def ack_message(self, queue_name, message_id):
+    def ack_message(self, queue_name: str, message_id: str):
         """
         消息确认
         """
