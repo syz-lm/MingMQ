@@ -14,7 +14,7 @@ from mingmq.process import MQProcess, AckProcess, CompletelyPersistentProcess, N
 
 LOGGER = logging.getLogger('Main')
 
-def main(log_level=logging.ERROR):
+def main(log_level=logging.DEBUG):
     global LOGGER
     logging.basicConfig(level=log_level, format='%(levelname)s:%(asctime)s:%(name)s[%(message)s]')
 

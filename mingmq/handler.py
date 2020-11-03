@@ -363,8 +363,9 @@ class Handler:
         t = now - last_time
         if t > 10:
             n = self._stat_memory.get(stat_var)
-            self._stat_memory.set_speed_per_second(stat_var, math.ceil(n / t))
-            self._stat_memory.set_last_time(now)
+            if n is not None:
+                self._stat_memory.set_speed_per_second(stat_var, math.ceil(n / t))
+                self._stat_memory.set_last_time(now)
 
     def _declare_queue(self, msg):
         if self._data_wrong('_declare_queue', ('queue_name',), msg) is not False:
