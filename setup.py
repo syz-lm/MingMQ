@@ -2,7 +2,7 @@ from setuptools import find_packages, setup
 
 setup(
     name='mingmq',
-    version='2.0.3',
+    version='2.0.4',
     url='',
     license='',
     maintainer='kael',
@@ -16,7 +16,7 @@ setup(
         'flask',
         'flask_httpauth',
         'netifaces',
-        'gevent',
+        'gevent'
     ],
     entry_points="""
     [console_scripts]
