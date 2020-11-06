@@ -299,19 +299,20 @@ class Handler:
             if self._data_wrong('_send_data_to_queue', ('queue_name', 'message_data'), msg) is not False:
                 queue_name = msg['queue_name']
                 message_data = msg['message_data']
-                task = Task(message_data)
-                if self._queue_memory.put(queue_name, task):
 
-                    pcppsm = PipeCompletelyPersistentProcessSendMessage(queue_name, message_data, task['message_id'])
-                    self._completely_persistent_process_queue.put_nowait(pcppsm)
+                if isinstance(message_data, 'str'):
+                    task = Task(message_data)
+                    if self._queue_memory.put(queue_name, task):
+                        pcppsm = PipeCompletelyPersistentProcessSendMessage(queue_name, message_data, task['message_id'])
+                        self._completely_persistent_process_queue.put_nowait(pcppsm)
 
-                    res_msg = ResMessage(MESSAGE_TYPE['SEND_DATA_TO_QUEUE'], SUCCESS, [])
-                    res_pkg = json.dumps(res_msg).encode()
-                    self._send_data(res_pkg)
-                else:
-                    res_msg = ResMessage(MESSAGE_TYPE['SEND_DATA_TO_QUEUE'], FAIL, [])
-                    res_pkg = json.dumps(res_msg).encode()
-                    self._send_data(res_pkg)
+                        res_msg = ResMessage(MESSAGE_TYPE['SEND_DATA_TO_QUEUE'], SUCCESS, [])
+                        res_pkg = json.dumps(res_msg).encode()
+                        self._send_data(res_pkg)
+
+                res_msg = ResMessage(MESSAGE_TYPE['SEND_DATA_TO_QUEUE'], FAIL, [])
+                res_pkg = json.dumps(res_msg).encode()
+                self._send_data(res_pkg)
         except:
             self._logger.error(traceback.format_exc())
         finally:
