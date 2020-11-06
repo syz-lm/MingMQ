@@ -300,7 +300,7 @@ class Handler:
                 queue_name = msg['queue_name']
                 message_data = msg['message_data']
 
-                if isinstance(message_data, 'str'):
+                if isinstance(message_data, str):
                     task = Task(message_data)
                     if self._queue_memory.put(queue_name, task):
                         pcppsm = PipeCompletelyPersistentProcessSendMessage(queue_name, message_data, task['message_id'])
