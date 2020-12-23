@@ -309,10 +309,10 @@ class Handler:
                         res_msg = ResMessage(MESSAGE_TYPE['SEND_DATA_TO_QUEUE'], SUCCESS, [])
                         res_pkg = json.dumps(res_msg).encode()
                         self._send_data(res_pkg)
-
-                res_msg = ResMessage(MESSAGE_TYPE['SEND_DATA_TO_QUEUE'], FAIL, [])
-                res_pkg = json.dumps(res_msg).encode()
-                self._send_data(res_pkg)
+                else:
+                    res_msg = ResMessage(MESSAGE_TYPE['SEND_DATA_TO_QUEUE'], FAIL, [])
+                    res_pkg = json.dumps(res_msg).encode()
+                    self._send_data(res_pkg)
         except:
             self._logger.error(traceback.format_exc())
         finally:
