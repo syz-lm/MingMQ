@@ -55,6 +55,7 @@ def to_json(data):
         return msg
     except (json.JSONDecodeError, TypeError):
         print(traceback.print_exc())
+        print('转换为json的数据为', repr(data))
         return False
 
 
