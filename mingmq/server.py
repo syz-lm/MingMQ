@@ -124,8 +124,6 @@ class Server:
             # 错误事件
             elif event & select.EPOLLERR:
                 self._close_event(fd)
-            else:
-                self._close_event(fd)
 
     def _new_conn_comming(self):
         try:
