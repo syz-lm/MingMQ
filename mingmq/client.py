@@ -448,7 +448,7 @@ class Client:
                 if buf:
                     data += buf
                     if len(data) >= data_size:
-                        msg = to_json(buf)
+                        msg = to_json(data)
                         self.logger.debug('服务器发送过来的消息[%s]。', repr(msg))
                         return msg
                 else:
@@ -483,7 +483,7 @@ class Client:
                 if buf:
                     data += buf
                     if len(data) >= data_size:
-                        msg = to_json(buf)
+                        msg = to_json(data)
                         self.logger.debug('服务器发送过来的消息[%s]。', repr(msg))
                         return msg
                 else:
@@ -518,7 +518,7 @@ class Client:
                 if buf:
                     data += buf
                     if len(data) >= data_size:
-                        msg = to_json(buf)
+                        msg = to_json(data)
                         self.logger.debug('服务器发送过来的消息[%s]。', repr(msg))
                         return msg
                 else:
@@ -553,7 +553,7 @@ class Client:
                 if buf:
                     data += buf
                     if len(data) >= data_size:
-                        msg = to_json(buf)
+                        msg = to_json(data)
                         self.logger.debug('服务器发送过来的消息[%s]。', repr(msg))
                         return msg
                 else:
