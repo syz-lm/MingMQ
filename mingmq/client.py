@@ -261,6 +261,16 @@ class Client:
 
         # 接收数据
         recv_header = self._recv(4)
+
+        msg = self._recv(recv_header)
+        if msg and msg['status'] == SUCCESS:
+            self._user_name = user_name
+            self._passwd = passwd
+
+        return msg
+
+
+    def _recv(self, recv_header):
         if recv_header:
             data_size, = struct.unpack('!i', recv_header)
 
@@ -274,9 +284,6 @@ class Client:
                     if len(data) == data_size:
                         msg = to_json(data)
                         self.logger.debug('服务器发送过来的消息[%s]。', repr(msg))
-                        if msg['status'] == SUCCESS:
-                            self._user_name = user_name
-                            self._passwd = passwd
                         return msg
                 else:
                     self.logger.error('login数据在接收过程中出现了空字符，当前data:%s', data)
@@ -298,27 +305,7 @@ class Client:
 
         # 接收数据
         recv_header = self._recv(4)
-        if recv_header:
-            data_size, = struct.unpack('!i', recv_header)
-
-            should_read = min(data_size, MAX_DATA_LENGTH)
-            data = b''
-            while self._connected and len(data) < data_size:
-                buf = self._recv(should_read)
-                if buf:
-                    data += buf
-                    if len(data) >= data_size:
-                        msg = to_json(data)
-                        self.logger.debug('服务器发送过来的消息[%s]。', repr(msg))
-                        return msg
-                else:
-                    self.logger.error('logout数据在接收过程中出现了空字符，当前data:%s', data)
-                    self._connected = False
-                    return False
-        else:
-            self.logger.error('logout在发送了请求之后，服务器返回了空字符，当前req_pkg:%s', repr(req_logout_msg))
-            self._connected = False
-            return False
+        return self._recv(recv_header)
 
     def declare_queue(self, queue_name):
         """
@@ -331,29 +318,7 @@ class Client:
 
         # 接收数据
         recv_header = self._recv(4)
-        if recv_header:
-            data_size, = struct.unpack('!i', recv_header)
-
-            should_read = min(data_size, MAX_DATA_LENGTH)
-            data = b''
-            while self._connected and len(data) < data_size:
-                buf = self._recv(should_read)
-                if buf:
-                    data += buf
-                    if len(data) >= data_size:
-                        msg = to_json(data)
-                        self.logger.debug('服务器发送过来的消息[%s]。', repr(msg))
-                        return msg
-                else:
-                    self.logger.error('declare_queue数据在接收过程中出现了空字符，当前data:%s', data)
-
-                    self._connected = False
-                    return False
-        else:
-            self.logger.error('declare_queue在发送了请求之后，服务器返回了空字符，当前req_pkg:%s', repr(req_declare_queue_msg))
-
-            self._connected = False
-            return False
+        return self._recv(recv_header)
 
     def get_data_from_queue(self, queue_name):
         """
@@ -366,30 +331,7 @@ class Client:
 
         # 接收数据
         recv_header = self._recv(4)
-        if recv_header:
-            data_size, = struct.unpack('!i', recv_header)
-
-            should_read = min(data_size, MAX_DATA_LENGTH)
-            data = b''
-            while self._connected and len(data) < data_size:
-                buf = self._recv(should_read)
-                if buf:
-                    data += buf
-
-                    if len(data) == data_size:
-                        msg = to_json(data)
-                        self.logger.debug('服务器发送过来的消息[%s]。', repr(msg))
-                        return msg
-                else:
-                    self.logger.error('get_data_from_queue数据在接收过程中出现了空字符，当前data:%s', data)
-
-                    self._connected = False
-                    return False
-        else:
-            self.logger.error('get_data_from_queue在发送了请求之后，服务器返回了空字符，当前req_pkg:%s', repr(req_get_data_from_queue_msg))
-
-            self._connected = False
-            return False
+        return self._recv(recv_header)
 
     def send_data_to_queue(self, queue_name: str, message_data: str):
         """
@@ -402,30 +344,7 @@ class Client:
 
         # 接收数据
         recv_header = self._recv(4)
-        if recv_header:
-            data_size, = struct.unpack('!i', recv_header)
-
-            should_read = min(data_size, MAX_DATA_LENGTH)
-            data = b''
-            while self._connected and len(data) < data_size:
-                buf = self._recv(should_read)
-                if buf:
-                    data += buf
-
-                    if len(data) == data_size:
-                        msg = to_json(data)
-                        self.logger.debug('服务器发送过来的消息[%s]。', repr(msg))
-                        return msg
-                else:
-                    self.logger.error('send_data_to_queue数据在接收过程中出现了空字符，当前data:%s', data)
-
-                    self._connected = False
-                    return False
-        else:
-            self.logger.error('send_data_to_queue在发送了请求之后，服务器返回了空字符，当前req_pkg:%s', repr(rsdfqm))
-
-            self._connected = False
-            return False
+        return self._recv(recv_header)
 
     def ack_message(self, queue_name: str, message_id: str):
         """
@@ -438,29 +357,7 @@ class Client:
 
         # 接收数据
         recv_header = self._recv(4)
-        if recv_header:
-            data_size, = struct.unpack('!i', recv_header)
-
-            should_read = min(data_size, MAX_DATA_LENGTH)
-            data = b''
-            while self._connected and len(data) < data_size:
-                buf = self._recv(should_read)
-                if buf:
-                    data += buf
-                    if len(data) >= data_size:
-                        msg = to_json(data)
-                        self.logger.debug('服务器发送过来的消息[%s]。', repr(msg))
-                        return msg
-                else:
-                    self.logger.error('ack_message数据在接收过程中出现了空字符，当前data:%s', data)
-
-                    self._connected = False
-                    return False
-        else:
-            self.logger.error('ack_message在发送了请求之后，服务器返回了空字符，当前req_pkg:%s', repr(req_ack_msg))
-
-            self._connected = False
-            return False
+        return self._recv(recv_header)
 
     def del_queue(self, queue_name):
         """
@@ -473,29 +370,7 @@ class Client:
 
         # 接收数据
         recv_header = self._recv(4)
-        if recv_header:
-            data_size, = struct.unpack('!i', recv_header)
-
-            should_read = min(data_size, MAX_DATA_LENGTH)
-            data = b''
-            while self._connected and len(data) < data_size:
-                buf = self._recv(should_read)
-                if buf:
-                    data += buf
-                    if len(data) >= data_size:
-                        msg = to_json(data)
-                        self.logger.debug('服务器发送过来的消息[%s]。', repr(msg))
-                        return msg
-                else:
-                    self.logger.error('del_queue数据在接收过程中出现了空字符，当前data:%s', data)
-
-                    self._connected = False
-                    return False
-        else:
-            self.logger.error('del_queue在发送了请求之后，服务器返回了空字符，当前req_pkg:%s', repr(req_ack_msg))
-
-            self._connected = False
-            return False
+        return self._recv(recv_header)
 
     def clear_queue(self, queue_name):
         """
@@ -508,29 +383,7 @@ class Client:
 
         # 接收数据
         recv_header = self._recv(4)
-        if recv_header:
-            data_size, = struct.unpack('!i', recv_header)
-
-            should_read = min(data_size, MAX_DATA_LENGTH)
-            data = b''
-            while self._connected and len(data) < data_size:
-                buf = self._recv(should_read)
-                if buf:
-                    data += buf
-                    if len(data) >= data_size:
-                        msg = to_json(data)
-                        self.logger.debug('服务器发送过来的消息[%s]。', repr(msg))
-                        return msg
-                else:
-                    self.logger.error('clear_queue数据在接收过程中出现了空字符，当前data:%s', data)
-
-                    self._connected = False
-                    return False
-        else:
-            self.logger.error('clear_queue在发送了请求之后，服务器返回了空字符，当前req_pkg:%s', repr(req_ack_msg))
-
-            self._connected = False
-            return False
+        return self._recv(recv_header)
 
     def get_speed(self, queue_name):
         """
@@ -543,29 +396,7 @@ class Client:
 
         # 接收数据
         recv_header = self._recv(4)
-        if recv_header:
-            data_size, = struct.unpack('!i', recv_header)
-
-            should_read = min(data_size, MAX_DATA_LENGTH)
-            data = b''
-            while self._connected and len(data) < data_size:
-                buf = self._recv(should_read)
-                if buf:
-                    data += buf
-                    if len(data) >= data_size:
-                        msg = to_json(data)
-                        self.logger.debug('服务器发送过来的消息[%s]。', repr(msg))
-                        return msg
-                else:
-                    self.logger.error('get_speed数据在接收过程中出现了空字符，当前data:%s', data)
-
-                    self._connected = False
-                    return False
-        else:
-            self.logger.error('get_speed在发送了请求之后，服务器返回了空字符，当前req_pkg:%s', repr(req_ack_msg))
-
-            self._connected = False
-            return False
+        return self._recv(recv_header)
 
     def get_stat(self):
         """
@@ -578,29 +409,7 @@ class Client:
 
         # 接收数据
         recv_header = self._recv(4)
-        if recv_header:
-            data_size, = struct.unpack('!i', recv_header)
-
-            should_read = min(data_size, MAX_DATA_LENGTH)
-            data = b''
-            while self._connected and len(data) < data_size:
-                buf = self._recv(should_read)
-                if buf:
-                    data += buf
-                    if len(data) >= data_size:
-                        msg = to_json(data)
-                        self.logger.debug('服务器发送过来的消息[%s]。', repr(msg))
-                        return msg
-                else:
-                    self.logger.error('get_stat数据在接收过程中出现了空字符，当前data:%s', data)
-
-                    self._connected = False
-                    return False
-        else:
-            self.logger.error('get_stat在发送了请求之后，服务器返回了空字符，当前req_pkg:%s', repr(req_get_stat_msg))
-
-            self._connected = False
-            return False
+        return self._recv(recv_header)
 
     def delete_ack_message_id_queue_name(self, message_id, queue_name):
         """
@@ -613,29 +422,7 @@ class Client:
 
         # 接收数据
         recv_header = self._recv(4)
-        if recv_header:
-            data_size, = struct.unpack('!i', recv_header)
-
-            should_read = min(data_size, MAX_DATA_LENGTH)
-            data = b''
-            while self._connected and len(data) < data_size:
-                buf = self._recv(should_read)
-                if buf:
-                    data += buf
-                    if len(data) >= data_size:
-                        msg = to_json(data)
-                        self.logger.debug('服务器发送过来的消息[%s]。', repr(msg))
-                        return msg
-                else:
-                    self.logger.error('delete_ack_message_id_queue_name数据在接收过程中出现了空字符，当前data:%s', data)
-
-                    self._connected = False
-                    return False
-        else:
-            self.logger.error('delete_ack_message_id_queue_name在发送了请求之后，服务器返回了空字符，当前req_pkg:%s', repr(req_delete_ack_message_id))
-
-            self._connected = False
-            return False
+        return self._recv(recv_header)
 
     def restore_ack_message_id(self, message_id, queue_name):
         """
@@ -648,29 +435,7 @@ class Client:
 
         # 接收数据
         recv_header = self._recv(4)
-        if recv_header:
-            data_size, = struct.unpack('!i', recv_header)
-
-            should_read = min(data_size, MAX_DATA_LENGTH)
-            data = b''
-            while self._connected and len(data) < data_size:
-                buf = self._recv(should_read)
-                if buf:
-                    data += buf
-                    if len(data) >= data_size:
-                        msg = to_json(data)
-                        self.logger.debug('服务器发送过来的消息[%s]。', repr(msg))
-                        return msg
-                else:
-                    self.logger.error('restore_ack_message_id数据在接收过程中出现了空字符，当前data:%s', data)
-
-                    self._connected = False
-                    return False
-        else:
-            self.logger.error('restore_ack_message_id在发送了请求之后，服务器返回了空字符，当前req_pkg:%s', repr(req_restore_ack_message_id_message))
-
-            self._connected = False
-            return False
+        return self._recv(recv_header)
 
     def restore_send_message(self, queue_name, message_data, message_id):
         """
@@ -683,29 +448,7 @@ class Client:
 
         # 接收数据
         recv_header = self._recv(4)
-        if recv_header:
-            data_size, = struct.unpack('!i', recv_header)
-
-            should_read = min(data_size, MAX_DATA_LENGTH)
-            data = b''
-            while self._connected and len(data) < data_size:
-                buf = self._recv(should_read)
-                if buf:
-                    data += buf
-                    if len(data) >= data_size:
-                        msg = to_json(data)
-                        self.logger.debug('服务器发送过来的消息[%s]。', repr(msg))
-                        return msg
-                else:
-                    self.logger.error('restore_send_message数据在接收过程中出现了空字符，当前data:%s', data)
-
-                    self._connected = False
-                    return False
-        else:
-            self.logger.error('restore_send_message在发送了请求之后，服务器返回了空字符，当前req_pkg:%s', repr(restore_send_message))
-
-            self._connected = False
-            return False
+        return self._recv(recv_header)
 
     def ping(self):
         req_ping_message = ReqPingMessage()
@@ -715,26 +458,4 @@ class Client:
 
         # 接收数据
         recv_header = self._recv(4)
-        if recv_header:
-            data_size, = struct.unpack('!i', recv_header)
-
-            should_read = min(data_size, MAX_DATA_LENGTH)
-            data = b''
-            while self._connected and len(data) < data_size:
-                buf = self._recv(should_read)
-                if buf:
-                    data += buf
-                    if len(data) >= data_size:
-                        msg = to_json(data)
-                        self.logger.debug('服务器发送过来的消息[%s]。', repr(msg))
-                        return msg
-                else:
-                    self.logger.error('ping数据在接收过程中出现了空字符，当前data:%s', data)
-
-                    self._connected = False
-                    return False
-        else:
-            self.logger.error('ping在发送了请求之后，服务器返回了空字符，当前req_pkg:%s', repr(req_ping_message))
-
-            self._connected = False
-            return False
+        return self._recv(recv_header)

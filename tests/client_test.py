@@ -1,4 +1,4 @@
-import logging, time
+import logging, json
 from threading import Thread, active_count
 
 from mingmq.client import Client
@@ -165,3 +165,12 @@ class PressureTest(TestCase):
     def test_long_message_get_many(self):
         tsn = 200
         get_many(tsn, 'web_page')
+
+
+class DiffSizeDataTest(TestCase):
+    def test_bug0(self):
+        tsn = 1
+        queue_names = ['bug0']
+        datas = [BUG0]
+
+        complete(tsn, queue_names[0], datas[0])
