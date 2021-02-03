@@ -169,7 +169,7 @@ class PressureTest(TestCase):
 
 class DiffSizeDataTest(TestCase):
     def test_bug0(self):
-        tsn = 1
+        tsn = 100
         queue_names = ['bug0']
         datas = [BUG0]
 
