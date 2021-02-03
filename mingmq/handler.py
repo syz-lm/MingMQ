@@ -68,17 +68,6 @@ class Handler:
         self._sock.close()
         self._logger.debug('客户端[IP %s]已断开。', repr(self._addr))
 
-    def _recv(self, size):
-        data = None
-        try:
-            data = self._sock.recv(size)
-        except (ConnectionResetError, OSError) as err:
-            # OSError: [WinError 10038] 在一个非套接字上尝试了一个操作。
-            # ConnectionResetError 远程主机主动断开了连接
-            self._logger.error(err)
-
-        return data
-
     def _handle_read(self):
         if self._should_read == 0:
             try:
@@ -467,16 +456,30 @@ class Handler:
 
                 self._connected = False
 
+    def _has_loggin(self):
+        if self._session_id is not None: return True
+        return False
+
     def _send_data(self, data):
         if self._connected:
             try:
                 header = struct.pack('!i', len(data))
                 self._logger.debug('发送给客户端[%s]的消息为: %s', self._addr, str(header + data)[:100])
                 self._sock.sendall(header + data)
-            except Exception:
-                self._logger.error(traceback.format_exc())
-                self._connected = False
+            except (BlockingIOError, ) as err:
+                # 非阻塞模式下，send()发送数据时，如果发送缓冲区可用大小不足以支持
+                # send() 写入全部数据，send()方法也会立马返回，
+                # 并抛出 BlockingIOError: [Errno 11] Resource temporarily unavailable异常
+                self._logger.error(err)
+                self._logger.debug('数据大小%d, 该socket对象发送缓冲区大小%d' % (len(header + data), self._sock.getsockopt(socket.SOL_SOCKET, socket.SO_SNDBUF)))
 
-    def _has_loggin(self):
-        if self._session_id is not None: return True
-        return False
+    def _recv(self, size):
+        data = None
+        try:
+            data = self._sock.recv(size)
+        except (ConnectionResetError, OSError) as err:
+            # OSError: [WinError 10038] 在一个非套接字上尝试了一个操作。
+            # ConnectionResetError 远程主机主动断开了连接
+            self._logger.error(err)
+
+        return data

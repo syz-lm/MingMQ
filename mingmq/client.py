@@ -427,14 +427,20 @@ class Client(object):
                 buf = self._recv(should_read)
                 if buf:
                     data += buf
-                    if len(data) == data_size:
-                        msg = to_json(data)
-                        self.logger.debug('服务器发送过来的消息[%s]。', repr(msg))
-                        return msg
+                    should_read -= len(buf)
                 else:
                     self.logger.error('数据在接收过程中出现了空字符，当前data:%s', data)
                     self._connected = False
                     return False
+
+            if len(data) == data_size:
+                msg = to_json(data)
+                self.logger.debug('服务器发送过来的消息[%s]。', repr(msg))
+                return msg
+            else:
+                self.logger.error('数据在接收过程中没有接收完毕，应接收数据长度: %d，实际接收数据长度：%d', data_size, len(data))
+                self._connected = False
+                return False
         else:
             self.logger.error('在发送了请求之后，服务器返回了空字符')
             self._connected = False
