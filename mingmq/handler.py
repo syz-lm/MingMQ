@@ -85,6 +85,7 @@ class Handler:
             buf = self._recv(self._should_read)
             if buf:
                 self._buf += buf
+                self._should_read -= len(buf)
 
                 if len(self._buf) == self._read_size:
                     self._should_read = 0
