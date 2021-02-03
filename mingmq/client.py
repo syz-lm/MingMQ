@@ -408,7 +408,7 @@ class Client(object):
         # 接收数据
         recv_header = self._recv(4)
 
-        msg = self._recv(recv_header)
+        msg = self._recv_surplus(recv_header)
         if msg and msg['status'] == SUCCESS:
             self._user_name = user_name
             self._passwd = passwd
@@ -416,7 +416,7 @@ class Client(object):
         return msg
 
 
-    def _recv(self, recv_header):
+    def _recv_surplus(self, recv_header):
         if recv_header:
             data_size, = struct.unpack('!i', recv_header)
 
@@ -451,7 +451,7 @@ class Client(object):
 
         # 接收数据
         recv_header = self._recv(4)
-        return self._recv(recv_header)
+        return self._recv_surplus(recv_header)
 
     def declare_queue(self, queue_name):
         """
@@ -464,7 +464,7 @@ class Client(object):
 
         # 接收数据
         recv_header = self._recv(4)
-        return self._recv(recv_header)
+        return self._recv_surplus(recv_header)
 
     def get_data_from_queue(self, queue_name):
         """
@@ -477,7 +477,7 @@ class Client(object):
 
         # 接收数据
         recv_header = self._recv(4)
-        return self._recv(recv_header)
+        return self._recv_surplus(recv_header)
 
     def send_data_to_queue(self, queue_name: str, message_data: str):
         """
@@ -490,7 +490,7 @@ class Client(object):
 
         # 接收数据
         recv_header = self._recv(4)
-        return self._recv(recv_header)
+        return self._recv_surplus(recv_header)
 
     def ack_message(self, queue_name: str, message_id: str):
         """
@@ -503,7 +503,7 @@ class Client(object):
 
         # 接收数据
         recv_header = self._recv(4)
-        return self._recv(recv_header)
+        return self._recv_surplus(recv_header)
 
     def del_queue(self, queue_name):
         """
@@ -516,7 +516,7 @@ class Client(object):
 
         # 接收数据
         recv_header = self._recv(4)
-        return self._recv(recv_header)
+        return self._recv_surplus(recv_header)
 
     def clear_queue(self, queue_name):
         """
@@ -529,7 +529,7 @@ class Client(object):
 
         # 接收数据
         recv_header = self._recv(4)
-        return self._recv(recv_header)
+        return self._recv_surplus(recv_header)
 
     def get_speed(self, queue_name):
         """
@@ -542,7 +542,7 @@ class Client(object):
 
         # 接收数据
         recv_header = self._recv(4)
-        return self._recv(recv_header)
+        return self._recv_surplus(recv_header)
 
     def get_stat(self):
         """
@@ -555,7 +555,7 @@ class Client(object):
 
         # 接收数据
         recv_header = self._recv(4)
-        return self._recv(recv_header)
+        return self._recv_surplus(recv_header)
 
     def delete_ack_message_id_queue_name(self, message_id, queue_name):
         """
@@ -568,7 +568,7 @@ class Client(object):
 
         # 接收数据
         recv_header = self._recv(4)
-        return self._recv(recv_header)
+        return self._recv_surplus(recv_header)
 
     def restore_ack_message_id(self, message_id, queue_name):
         """
@@ -581,7 +581,7 @@ class Client(object):
 
         # 接收数据
         recv_header = self._recv(4)
-        return self._recv(recv_header)
+        return self._recv_surplus(recv_header)
 
     def restore_send_message(self, queue_name, message_data, message_id):
         """
@@ -594,7 +594,7 @@ class Client(object):
 
         # 接收数据
         recv_header = self._recv(4)
-        return self._recv(recv_header)
+        return self._recv_surplus(recv_header)
 
     def ping(self):
         req_ping_message = ReqPingMessage()
@@ -604,4 +604,4 @@ class Client(object):
 
         # 接收数据
         recv_header = self._recv(4)
-        return self._recv(recv_header)
+        return self._recv_surplus(recv_header)
