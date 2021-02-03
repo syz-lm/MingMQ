@@ -2,10 +2,10 @@
 基于多线程的，因为传统编程框架大多数是使用多线程的，所以是必须提供一个，
 后面就再增加一个异步的客户端驱动；
 
-总的来说，也就是提供两个类，Client和Pool:
-
 * Client封装了对MingMQ的各种操作；
 * Pool主要是不用经常登陆，可以很好的节省时间，如果是其它应用调用连接池，还能保持服务的高可用，用户根本不需要管出现的问题；
+* ConsumerTaskThread用于消费者任务线程处理
+* Consumer消费者用于从任务消息队列中获取任务再将处理后的数据放入存储队列的应用中
 """
 
 import time
@@ -432,11 +432,11 @@ class Client(object):
                         self.logger.debug('服务器发送过来的消息[%s]。', repr(msg))
                         return msg
                 else:
-                    self.logger.error('login数据在接收过程中出现了空字符，当前data:%s', data)
+                    self.logger.error('数据在接收过程中出现了空字符，当前data:%s', data)
                     self._connected = False
                     return False
         else:
-            self.logger.error('login在发送了请求之后，服务器返回了空字符，当前req_pkg:%s', repr(req_login_msg))
+            self.logger.error('在发送了请求之后，服务器返回了空字符')
             self._connected = False
             return False
 
