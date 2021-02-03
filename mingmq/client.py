@@ -8,6 +8,8 @@
 * Pool主要是不用经常登陆，可以很好的节省时间，如果是其它应用调用连接池，还能保持服务的高可用，用户根本不需要管出现的问题；
 """
 
+import time
+import sys
 import json
 import logging
 import socket
@@ -22,14 +24,159 @@ from mingmq.message import (ReqLoginMessage,
                             ReqACKMessage, MAX_DATA_LENGTH, ReqPingMessage,
                             ReqGetSpeedMessage, ReqGetStatMessage,
                             ReqDeleteAckMessageIDMessage, ReqRestoreAckMessageIDMessage,
-                            ReqRestoreSendMessage)
+                            ReqRestoreSendMessage, FAIL)
 from mingmq.utils import to_json
 from mingmq.error import ClientPoolEmpty
 
-from threading import Lock
+from threading import Lock, Thread
 
 
-class Pool:
+class ConsumerTaskThread(Thread):
+    """消费者线程任务处理类
+    """
+
+    def __init__(self, target, args, consumer) -> None:
+        """初始化
+
+        :param target: 回调函数
+        :type target: callable function
+        :param args: 函数参数
+        :type args: tuple
+        :param consumer: 消费者
+        :type consumer: Consumer
+        """
+        super().__init__(None, target, None, args, None, daemon=None)
+        self._args = args
+        self._consumer = consumer
+
+    def run(self) -> None:
+        # 线程执行之前，消费者使用的连接自增
+        with self._consumer.lock:
+            self._consumer.used_conn_num += 1
+
+        try:
+            # 实际的回调函数执行
+            super().run()
+            # 确认任务
+            message_id = self._args[0]['json_obj'][0]['message_id']
+            self._consumer.mingmq_pool.opera('ack_message', *(self._consumer.task_queue_name, message_id))
+        except:
+            self._consumer.log.error(traceback.format_exc())
+
+        # 执行完毕后，消费者的连接递减
+        with self._consumer.lock:
+            self._consumer.used_conn_num -= 1
+
+
+class Consumer(object):
+    """适用于从队列中获取任务处理后将数据再放到另一个队列中存储的应用
+    """
+
+    def __init__(self, host, port, user_name, passwd, size, task_queue_name, data_queue_name):
+        """初始化消费者
+
+        :param host: 服务器主机地址；
+        :type host: str
+        :param port: 服务器端口；
+        :type port: int
+        :param user_name: 用户名；
+        :type user_name: str
+        :param passwd: 密码；
+        :type passwd: str
+        :param size: 连接池大小；
+        :type size: int
+        :param task_queue_name: 任务队列名
+        :type task_queue_name: str
+        :param data_queue_name: 存储队列名
+        :type data_queue_name: str
+        """
+        self._host = host
+        self._port = port
+        self._user_name = user_name
+        self._passwd = passwd
+        self._size = size + 1
+        self._task_queue_name = task_queue_name
+        self._data_queue_name = data_queue_name
+
+        self._init_mingmq_pool()
+        self._declare_queue()
+
+        self._lock = Lock()
+        self._used_conn_num = 0
+
+        self._log = logging.getLogger('Consumer')
+
+    @property
+    def used_conn_num(self):
+        return self._used_conn_num
+
+    @used_conn_num.setter
+    def used_conn_num(self, used_conn_num):
+        self._used_conn_num = used_conn_num
+
+    @property
+    def lock(self):
+        return self._lock
+
+    @property
+    def task_queue_name(self):
+        return self._task_queue_name
+
+    @property
+    def mingmq_pool(self):
+        return self._mingmq_pool
+
+    @property
+    def data_queue_name(self):
+        return self._data_queue_name
+
+    @property
+    def log(self):
+        return self._log
+
+    def _init_mingmq_pool(self):
+        """初始化mingmq连接池
+        """
+        self._mingmq_pool = Pool(self._host, self._port, self._user_name, self._passwd, self._size)
+
+    def _declare_queue(self):
+        """声明队列名
+        """
+        self._mingmq_pool.opera('declare_queue', *(self._task_queue_name,))
+        self._mingmq_pool.opera('declare_queue', *(self._data_queue_name,))
+
+    def get_task(self, func):
+        """从队列中获取任务
+
+        :param func: 回调函数
+        :type func:
+        """
+        while True:
+            if self.used_conn_num > 1:
+                try:
+                    mq_res: dict = self._mingmq_pool.opera('get_data_from_queue', *(self._task_queue_name,))
+                    if mq_res and mq_res['status'] == FAIL:
+                        raise Exception("任务队列中没有任务")
+                    if mq_res is None:
+                        self._log.error("服务器内部错误")
+                        sys.exit(1)
+                    self._log.debug('从消息队列中获取的消息为: %s', mq_res)
+                except Exception as e:
+                    self._log.debug('XX: 从消息队列中获取任务失败，错误信息: %s', str(e))
+                    continue
+                try:
+                    ConsumerTaskThread(target=func, args=(mq_res['json_obj'],)).start()
+                except Exception as e:
+                    self._log.debug("XX: 线程在执行过程中出现异常，错误信息为: %s", str(e))
+                time.sleep(1)
+            else:
+                time.sleep(10)
+
+    def _release_mingmq_pool(self):
+        self._mingmq_pool.release()
+
+
+class Pool(object):
     """一个多线程的连接池。提供了一些方法的调用，但是用户只需要关心
     opera这个方法就够了，其它都已经封装好了；
 
@@ -50,7 +197,6 @@ class Pool:
     _LOCK = Lock()
 
     _logger = logging.getLogger('Pool')
-
 
     def __init__(self, host, port, user_name, passwd, size):
         """主要的作用是初始化连接池，保存连接池的连接信息用于重连
@@ -118,7 +264,7 @@ class Pool:
                         except Exception as e:
                             self._logger.error(str(e))
 
-                        i+= 1
+                        i += 1
 
                     raise ClientPoolEmpty('连接池已空')
                 else:
@@ -194,7 +340,7 @@ class Pool:
         with Pool._LOCK: return [i for i in self._que]
 
 
-class Client:
+class Client(object):
     """
     服务器客户端
     """
