@@ -93,22 +93,6 @@ class Server:
         for fd, event in events:  # 文件描述符，事件
             handler = self._fd_to_handler[fd]
 
-            """
-            EPOLLERR = 8
-            EPOLLET = 2147483648
-            EPOLLEXCLUSIVE = 268435456
-            EPOLLHUP = 16
-            EPOLLIN = 1
-            EPOLLMSG = 1024
-            EPOLLONESHOT = 1073741824
-            EPOLLOUT = 4
-            EPOLLPRI = 2
-            EPOLLRDBAND = 128
-            EPOLLRDHUP = 8192
-            EPOLLRDNORM = 64
-            EPOLLWRBAND = 512
-            EPOLLWRNORM = 256
-            """
             # 如果活动socket为当前服务器socket，表示有新连接
             if handler == self:
                 self._new_conn_comming()

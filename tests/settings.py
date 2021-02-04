@@ -1,4 +1,4 @@
-IP = 'mingmq'
+IP = 'localhost'
 PORT = 15673
 USER = 'mingmq'
 PASSWD = 'mm5201314'

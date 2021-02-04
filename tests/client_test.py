@@ -169,8 +169,8 @@ class PressureTest(TestCase):
 
 class DiffSizeDataTest(TestCase):
     def test_bug0(self):
-        tsn = 100
-        queue_names = ['bug0']
+        tsn = 10
+        queue_names = ['ming_kdd_add_article']
         datas = [BUG0]
 
-        complete(tsn, queue_names[0], datas[0])
+        send_many(tsn, queue_names[0], datas[0])
