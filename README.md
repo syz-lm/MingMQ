@@ -35,6 +35,11 @@ IP/端口:0.0.0.0:15673, 用户名/密码:mingmq/mm5201314，最大并发数:100
 
 默认端口15673。
 
+启动消息服务
+```
+$ mmserver --ACK_PROCESS_DB_FILE ./ack_process_db_file.db --COMPLETELY_PERSISTENT_PROCESS_DB_FILE ./completely_persistent_process_db_file.db
+```
+
 ## Web Console
 
 启动mmserver监控WEB控制台：
@@ -46,11 +51,3 @@ $ mmweb
 ![](http://serv_pro:3000/kael/MingMQ/raw/master/web_console.png)
 
 默认端口15674。
-
-
-## 命令行参数例子
-
-启动消息服务
-```
-$ mmserver --ACK_PROCESS_DB_FILE ./ack_process_db_file.db --COMPLETELY_PERSISTENT_PROCESS_DB_FILE ./completely_persistent_process_db_file.db
-```

@@ -79,7 +79,6 @@ class Handler:
                     if self._header:
                         self._read_size, = struct.unpack('!i', self._header)
                         self._should_read = min(self._read_size, MAX_DATA_LENGTH)
-                        self._read_count = 0
                     else:
                         self._connected = False
                 except:
@@ -301,6 +300,10 @@ class Handler:
                         self._completely_persistent_process_queue.put_nowait(pcppsm)
 
                         res_msg = ResMessage(MESSAGE_TYPE['SEND_DATA_TO_QUEUE'], SUCCESS, [])
+                        res_pkg = json.dumps(res_msg).encode()
+                        self._send_data(res_pkg)
+                    else:
+                        res_msg = ResMessage(MESSAGE_TYPE['SEND_DATA_TO_QUEUE'], FAIL, [])
                         res_pkg = json.dumps(res_msg).encode()
                         self._send_data(res_pkg)
                 else:

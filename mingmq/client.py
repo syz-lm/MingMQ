@@ -2,10 +2,11 @@
 基于多线程的，因为传统编程框架大多数是使用多线程的，所以是必须提供一个，
 后面就再增加一个异步的客户端驱动；
 
-* Client封装了对MingMQ的各种操作；
-* Pool主要是不用经常登陆，可以很好的节省时间，如果是其它应用调用连接池，还能保持服务的高可用，用户根本不需要管出现的问题；
+* Producer生产者用于向消息队列中发送任务
 * ConsumerTaskThread用于消费者任务线程处理
 * Consumer消费者用于从任务消息队列中获取任务再将处理后的数据放入存储队列的应用中
+* Client封装了对MingMQ的各种操作；
+* Pool主要是不用经常登陆，可以很好的节省时间，如果是其它应用调用连接池，还能保持服务的高可用，用户根本不需要管出现的问题
 """
 
 import time
@@ -31,6 +32,46 @@ from mingmq.error import ClientPoolEmpty
 from threading import Lock, Thread
 
 
+class Producer(object):
+    """生产者，用于发送消息到指定队列
+    """
+
+    def __init__(self, host, port, user_name, passwd, task_queue_name):
+        self._host = host
+        self._port = port
+        self._user_name = user_name
+        self._passwd = passwd
+        self._task_queue_name = task_queue_name
+        self._log = logging.getLogger('Producer')
+        self._init_mingmq_conn()
+        self._mingmq_conn.declare_queue(self._task_queue_name)
+
+    def _init_mingmq_conn(self):
+        """初始化mingmq连接
+        """
+        self._mingmq_conn = Client(self._host, self._port)
+        if self._mingmq_conn.login(self._user_name, self._passwd) != SUCCESS:
+            raise Exception('登录失败')
+
+    def send_task(self, task_data):
+        """发送数据到消息队列中
+
+        :param task_data: 数据
+                例子:
+                self._mingmq.opera('send_data_to_queue', *(MINGMQ_CONFIG['get_article_category']['queue_name'], json.dumps({
+                    "category_id": 40
+                })))
+        """
+        json_obj = json.dumps(task_data)
+        result = self._mingmq_conn.send_data_to_queue(self._task_queue_name, json_obj)
+        if result is None or result and result['status'] != SUCCESS:
+            raise Exception('发送任务到消息队列中失败！')
+        self._log.debug('发送数据到消息队列中成功: queue=%s, data=%s', self._task_queue_name, task_data)
+
+    def release(self):
+        self._mingmq_conn.close()
+
+
 class ConsumerTaskThread(Thread):
     """消费者线程任务处理类
     """
@@ -45,27 +86,34 @@ class ConsumerTaskThread(Thread):
         :param consumer: 消费者
         :type consumer: Consumer
         """
-        super().__init__(None, target, None, args, None, daemon=None)
-        self._args = args
+        Thread.__init__(self, target=target, args=args)
+        self.args = args
         self._consumer = consumer
+        self._log = logging.getLogger(self.getName())
 
     def run(self) -> None:
         # 线程执行之前，消费者使用的连接自增
         with self._consumer.lock:
             self._consumer.used_conn_num += 1
+            self._log.debug('消费者正在运行的任务数递增：%d', self._consumer.used_conn_num)
 
         try:
             # 实际的回调函数执行
             super().run()
             # 确认任务
-            message_id = self._args[0]['json_obj'][0]['message_id']
-            self._consumer.mingmq_pool.opera('ack_message', *(self._consumer.task_queue_name, message_id))
+            message_id = self.args[1]
+            msg = self._consumer.mingmq_pool.opera('ack_message', *(self._consumer.task_queue_name, message_id))
+            if msg and msg['status'] == SUCCESS:
+                self._log.debug('确认消息成功: %s, %s', self._consumer.task_queue_name, message_id)
+            else:
+                self._log.debug('确认消息失败: %s, %s', self._consumer.task_queue_name, message_id)
         except:
             self._consumer.log.error(traceback.format_exc())
 
         # 执行完毕后，消费者的连接递减
         with self._consumer.lock:
             self._consumer.used_conn_num -= 1
+            self._log.debug('消费者正在运行的任务数递减：%d', self._consumer.used_conn_num)
 
 
 class Consumer(object):
@@ -145,14 +193,22 @@ class Consumer(object):
         self._mingmq_pool.opera('declare_queue', *(self._task_queue_name,))
         self._mingmq_pool.opera('declare_queue', *(self._data_queue_name,))
 
-    def get_task(self, func):
+    def serv_forever(self, func):
         """从队列中获取任务
 
         :param func: 回调函数
         :type func:
+
+        XX: 回调函数例子
+        ```
+        def callback(message_data, message_id):
+            print(message_data, message_id)
+        ```
         """
         while True:
-            if self.used_conn_num > 1:
+            self._log.debug('正在运行的任务数：%d', self.used_conn_num)
+
+            if self.used_conn_num < self._size - 1:
                 try:
                     mq_res: dict = self._mingmq_pool.opera('get_data_from_queue', *(self._task_queue_name,))
                     if mq_res and mq_res['status'] == FAIL:
@@ -165,12 +221,13 @@ class Consumer(object):
                     self._log.debug('XX: 从消息队列中获取任务失败，错误信息: %s', str(e))
                     continue
                 try:
-                    ConsumerTaskThread(target=func, args=(mq_res['json_obj'],)).start()
+                    message_data = mq_res['json_obj'][0]['message_data']
+                    message_id = mq_res['json_obj'][0]['message_id']
+                    ConsumerTaskThread(target=func, args=(message_data, message_id), consumer=self).start()
                 except Exception as e:
                     self._log.debug("XX: 线程在执行过程中出现异常，错误信息为: %s", str(e))
-                time.sleep(1)
             else:
-                time.sleep(10)
+                time.sleep(3)
 
     def _release_mingmq_pool(self):
         self._mingmq_pool.release()
@@ -212,7 +269,6 @@ class Pool(object):
         :type passwd: str
         :param size: 连接池大小；
         :type size: int
-
         """
         self._host = host
         self._port = port
@@ -232,8 +288,10 @@ class Pool(object):
         """
         for i in range(self._size):
             cli = Client(self._host, self._port)
-            cli.login(self._user_name, self._passwd)
-            self._que.append(cli)
+            if cli.login(self._user_name, self._passwd) == SUCCESS:
+                self._que.append(cli)
+            else:
+                self._logger.debug('登录失败')
 
     def get_conn(self):
         """从连接池中获取一个连接，然后就可以用这个连接做自己想做的事
@@ -413,8 +471,8 @@ class Client(object):
             self._user_name = user_name
             self._passwd = passwd
 
-        return msg
-
+            return SUCCESS
+        return FAIL
 
     def _recv_surplus(self, recv_header):
         if recv_header:
